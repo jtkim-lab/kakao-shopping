@@ -1,4 +1,11 @@
-# shopping-classification
+# shopping-classification by 김앤강
+
+## Supported Python version
+- Python 2
+
+## Authors
+- [Jungtaek Kim](https://github.com/jungtaekkim)
+- [Dongho Kang](https://github.com/eastskykang)
 
 `쇼핑몰 상품 카테고리 분류` 대회 참가자에게 제공되는 코드 베이스입니다. 전처리와 간단한 분류기 그리고 평가 코드로 구성되어 있습니다. (코드는 python2, keras, tensorflow 기준으로 작성되었습니다.)
 
@@ -34,10 +41,10 @@
 카테고리를 계층 구분없이 "대>중>소>세"로 표현하여 데이터를 구성했습니다. 그 뒤에 간단한 선형 모델로 네트워크를 구성했는데, 텍스트 데이터를 정규화한 후 단어 빈도가 높은 순서로 N개의 워드와 그에 대한 빈도를 입력으로 받습니다. 워드는 임베딩되고, 빈도는 가중치로 작용하게 됩니다.
 
 
-## 기타
+## Others
 - 코드 베이스를 실행하기 위해서는 데이터셋을 포함해 최소 450G 가량의 공간이 필요합니다.
 
-## 라이선스
+## License
 
 This software is licensed under the Apache 2 license, quoted below.
 
