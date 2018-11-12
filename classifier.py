@@ -16,8 +16,10 @@
 import os
 import json
 try:
+    # for python 2
     import cPickle as pickle
 except:
+    # for python 3
     import pickle
 from itertools import izip
 
@@ -88,8 +90,12 @@ class Classifier():
         with open(out_path, 'w') as fout:
             for pid in pid_order:
                 ans = rets.get(pid, no_answer.format(pid=pid))
-#                print >> fout, ans
-                print(ans, file=fout)
+                try:
+                    # for python 2
+                    print >> fout, ans
+                except:
+                    # for python 3
+                    print(ans, file=fout)
 
     def predict(self, data_root, model_root, test_root, test_div, out_path, readable=False):
         meta_path = os.path.join(data_root, 'meta')

@@ -17,8 +17,10 @@ os.environ['OMP_NUM_THREADS'] = '1'
 import re
 import sys
 try:
+    # python 2
     import cPickle as pickle
 except:
+    # python 3
     import pickle
 import traceback
 from collections import Counter

@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 try:
+    # python 2
     import cPickle as pickle
 except:
+    # python 3
     import pickle
 from itertools import izip
 
