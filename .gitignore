@@ -1,7 +1,12 @@
+# python
 *.pyc
+*.swp
+
+# directories
 tmp/
+data/
+model/
+
+# mac
 .DS_Store
 __MACOSX/
-*.swp
-data/*
-model/*
