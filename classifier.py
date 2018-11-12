@@ -15,7 +15,10 @@
 
 import os
 import json
-import cPickle
+try:
+    import cPickle as pickle
+except:
+    import pickle
 from itertools import izip
 
 import fire
@@ -85,11 +88,12 @@ class Classifier():
         with open(out_path, 'w') as fout:
             for pid in pid_order:
                 ans = rets.get(pid, no_answer.format(pid=pid))
-                print >> fout, ans
+#                print >> fout, ans
+                print(ans, file=fout)
 
     def predict(self, data_root, model_root, test_root, test_div, out_path, readable=False):
         meta_path = os.path.join(data_root, 'meta')
-        meta = cPickle.loads(open(meta_path).read())
+        meta = pickle.loads(open(meta_path).read())
 
         model_fname = os.path.join(model_root, 'model.h5')
         self.logger.info('# of classes(train): %s' % len(meta['y_vocab']))
@@ -113,7 +117,7 @@ class Classifier():
         data_path = os.path.join(data_root, 'data.h5py')
         meta_path = os.path.join(data_root, 'meta')
         data = h5py.File(data_path, 'r')
-        meta = cPickle.loads(open(meta_path).read())
+        meta = pickle.loads(open(meta_path).read())
         self.weight_fname = os.path.join(out_dir, 'weights')
         self.model_fname = os.path.join(out_dir, 'model')
         if not os.path.isdir(out_dir):

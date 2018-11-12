@@ -12,7 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import cPickle
+try:
+    import cPickle as pickle
+except:
+    import pickle
 from itertools import izip
 
 import fire
@@ -22,11 +25,14 @@ import numpy as np
 
 def evaluate(predict_path, data_path, div, y_vocab_path):
     h = h5py.File(data_path, 'r')[div]
-    inv_y_vocab = {v: k
-                   for k, v in cPickle.loads(open(y_vocab_path).read()).iteritems()}
+    inv_y_vocab = {
+        v: k for k, v in pickle.loads(open(y_vocab_path).read()).iteritems()
+    }
     fin = open(predict_path)
-    hit, n = {}, {'b': 0, 'm': 0, 's': 0, 'd': 0}
-    print 'loading ground-truth...'
+    hit = {}
+    n = {'b': 0, 'm': 0, 's': 0, 'd': 0}
+
+    print('loading ground-truth...')
     CATE = np.argmax(h['cate'], axis=1)
     for p, y in izip(fin, CATE):
         pid, b, m, s, d = p.split('\t')
@@ -42,11 +48,11 @@ def evaluate(predict_path, data_path, div, y_vocab_path):
                 hit[depth] = hit.get(depth, 0) + 1
     for d in ['b', 'm', 's', 'd']:
         if n[d] > 0:
-            print '%s-Accuracy: %.3f(%s/%s)' % (d, hit[d] / float(n[d]), hit[d], n[d])
+            print('%s-Accuracy: %.3f(%s/%s)' % (d, hit[d] / float(n[d]), hit[d], n[d]))
     score = sum([hit[d] / float(n[d]) * w
                  for d, w in zip(['b', 'm', 's', 'd'],
                                  [1.0, 1.2, 1.3, 1.4])]) / 4.0
-    print 'score: %.3f' % score
+    print('score: %.3f' % score)
 
 if __name__ == '__main__':
     fire.Fire({'evaluate': evaluate})
