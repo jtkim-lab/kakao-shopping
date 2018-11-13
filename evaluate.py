@@ -12,13 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-try:
-    # python 2
-    import cPickle as pickle
-except:
-    # python 3
-    import pickle
-from itertools import izip
+import pickle
 
 import fire
 import h5py
@@ -27,19 +21,20 @@ import numpy as np
 
 def evaluate(predict_path, data_path, div, y_vocab_path):
     h = h5py.File(data_path, 'r')[div]
+    y_vocab = pickle.loads(open(y_vocal_path).read())
     inv_y_vocab = {
-        v: k for k, v in pickle.loads(open(y_vocab_path).read()).iteritems()
+        v: k for k, v in y_vocab.items()
     }
-    fin = open(predict_path)
+    fin = open(predict_path, 'rb')
     hit = {}
     n = {'b': 0, 'm': 0, 's': 0, 'd': 0}
 
-    print('loading ground-truth...')
+    print('[INFORM] load ground-truth...')
     CATE = np.argmax(h['cate'], axis=1)
-    for p, y in izip(fin, CATE):
+    for p, y in zip(fin, CATE):
         pid, b, m, s, d = p.split('\t')
-        b, m, s, d = map(int, [b, m, s, d])
-        gt = map(int, inv_y_vocab[y].split('>'))
+        b, m, s, d = list(map(int, [b, m, s, d]))
+        gt = list(map(int, inv_y_vocab[y].split('>')))
         for depth, _p, _g in zip(['b', 'm', 's', 'd'],
                                  [b, m, s, d],
                                  gt):

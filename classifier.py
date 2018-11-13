@@ -15,13 +15,7 @@
 
 import os
 import json
-try:
-    # for python 2
-    import cPickle as pickle
-except:
-    # for python 3
-    import pickle
-from itertools import izip
+import pickle
 
 import fire
 import h5py
@@ -57,7 +51,7 @@ class Classifier():
     def get_inverted_cate1(self, cate1):
         inv_cate1 = {}
         for d in ['b', 'm', 's', 'd']:
-            inv_cate1[d] = {v: k for k, v in cate1[d].iteritems()}
+            inv_cate1[d] = {v: k for k, v in cate1[d].items()}
         return inv_cate1
 
     def write_prediction_result(self, data, pred_y, meta, out_path, readable):
@@ -66,14 +60,15 @@ class Classifier():
             h = h5py.File(data_path, 'r')['dev']
             pid_order.extend(h['pid'][::])
 
-        y2l = {i: s for s, i in meta['y_vocab'].iteritems()}
-        y2l = map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0]))
+        y2l = {i: s for s, i in meta['y_vocab'].items()}
+        y2l = list(map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0])))
         inv_cate1 = self.get_inverted_cate1(cate1)
         rets = {}
-        for pid, p in izip(data['pid'], pred_y):
+        for pid, p in zip(data['pid'], pred_y):
+            pid = pid.decode('utf-8')
             y = np.argmax(p)
             label = y2l[y]
-            tkns = map(int, label.split('>'))
+            tkns = list(map(int, label.split('>')))
             b, m, s, d = tkns
             assert b in inv_cate1['b']
             assert m in inv_cate1['m']
@@ -90,16 +85,12 @@ class Classifier():
         with open(out_path, 'w') as fout:
             for pid in pid_order:
                 ans = rets.get(pid, no_answer.format(pid=pid))
-                try:
-                    # for python 2
-                    print >> fout, ans
-                except:
-                    # for python 3
-                    print(ans, file=fout)
+                fout.write(ans)
+                fout.write('\n')
 
     def predict(self, data_root, model_root, test_root, test_div, out_path, readable=False):
         meta_path = os.path.join(data_root, 'meta')
-        meta = pickle.loads(open(meta_path).read())
+        meta = pickle.loads(open(meta_path, 'rb').read())
 
         model_fname = os.path.join(model_root, 'model.h5')
         self.logger.info('# of classes(train): %s' % len(meta['y_vocab']))
@@ -123,7 +114,7 @@ class Classifier():
         data_path = os.path.join(data_root, 'data.h5py')
         meta_path = os.path.join(data_root, 'meta')
         data = h5py.File(data_path, 'r')
-        meta = pickle.loads(open(meta_path).read())
+        meta = pickle.loads(open(meta_path, 'rb').read())
         self.weight_fname = os.path.join(out_dir, 'weights')
         self.model_fname = os.path.join(out_dir, 'model')
         if not os.path.isdir(out_dir):
