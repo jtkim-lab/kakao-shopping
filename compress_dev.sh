@@ -1,1 +1,2 @@
-zip predicts_dev.zip baseline.predict.tsv
+#! /bin/bash
+zip kimandkang_predict_dev.zip kimandkang.predict.dev.tsv

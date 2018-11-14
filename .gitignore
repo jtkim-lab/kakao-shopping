@@ -1,5 +1,8 @@
 # challenge
+predict.tsv
 baseline.predict.tsv
+kimandkang.predict.dev.tsv
+kimandkang.predict.test.tsv
 
 # python
 *.pyc

@@ -276,10 +276,12 @@ class Data:
         self.logger.info('make database from data(%s) with train_ratio(%s)' % (data_name, train_ratio))
 
         self.load_y_vocab()
-        num_input_chunks = self._preprocessing(Data,
-                                               data_path_list,
-                                               div,
-                                               chunk_size=opt.chunk_size)
+        num_input_chunks = self._preprocessing(
+            Data,
+            data_path_list,
+            div,
+            chunk_size=opt.chunk_size
+        )
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
 
@@ -308,8 +310,10 @@ class Data:
         dataset = {'train': train, 'dev': dev}
         num_samples = {'train': 0, 'dev': 0}
         chunk_size = opt.db_chunk_size
-        chunk = {'train': self.init_chunk(chunk_size, len(self.y_vocab)),
-                 'dev': self.init_chunk(chunk_size, len(self.y_vocab))}
+        chunk = {
+            'train': self.init_chunk(chunk_size, len(self.y_vocab)),
+            'dev': self.init_chunk(chunk_size, len(self.y_vocab))
+        }
         chunk_order = list(range(num_input_chunks))
         np.random.shuffle(chunk_order)
         for input_chunk_idx in chunk_order:
@@ -370,5 +374,7 @@ class Data:
 
 if __name__ == '__main__':
     data = Data()
-    fire.Fire({'make_db': data.make_db,
-               'build_y_vocab': data.build_y_vocab})
+    fire.Fire({
+        'make_db': data.make_db,
+        'build_y_vocab': data.build_y_vocab
+    })
