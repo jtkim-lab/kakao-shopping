@@ -136,22 +136,28 @@ class Classifier():
         model = textonly.get_model(self.num_classes)
 
         total_train_samples = train['uni'].shape[0]
-        train_gen = self.get_sample_generator(train,
-                                              batch_size=opt.batch_size)
+        train_gen = self.get_sample_generator(
+            train,
+            batch_size=opt.batch_size
+        )
         self.steps_per_epoch = int(np.ceil(total_train_samples / float(opt.batch_size)))
 
         total_dev_samples = dev['uni'].shape[0]
-        dev_gen = self.get_sample_generator(dev,
-                                            batch_size=opt.batch_size)
+        dev_gen = self.get_sample_generator(
+            dev,
+            batch_size=opt.batch_size
+        )
         self.validation_steps = int(np.ceil(total_dev_samples / float(opt.batch_size)))
 
-        model.fit_generator(generator=train_gen,
-                            steps_per_epoch=self.steps_per_epoch,
-                            epochs=opt.num_epochs,
-                            validation_data=dev_gen,
-                            validation_steps=self.validation_steps,
-                            shuffle=True,
-                            callbacks=[checkpoint])
+        model.fit_generator(
+            generator=train_gen,
+            steps_per_epoch=self.steps_per_epoch,
+            epochs=opt.num_epochs,
+            validation_data=dev_gen,
+            validation_steps=self.validation_steps,
+            shuffle=True,
+            callbacks=[checkpoint]
+        )
 
         model.load_weights(self.weight_fname) # loads from checkout point if exists
         open(self.model_fname + '.json', 'w').write(model.to_json())

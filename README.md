@@ -1,7 +1,7 @@
 # shopping-classification by 김앤강
 
 ## Supported Python version
-- Python 2
+- Python 3
 
 ## Authors
 - [Jungtaek Kim](https://github.com/jungtaekkim)
