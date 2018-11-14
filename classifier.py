@@ -84,6 +84,7 @@ class Classifier():
         no_answer = '{pid}\t-1\t-1\t-1\t-1'
         with open(out_path, 'w') as fout:
             for pid in pid_order:
+                pid = pid.decode('utf-8')
                 ans = rets.get(pid, no_answer.format(pid=pid))
                 fout.write(ans)
                 fout.write('\n')
