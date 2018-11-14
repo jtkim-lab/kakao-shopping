@@ -146,8 +146,10 @@ class Classifier():
         model = textonly.get_model(self.num_classes)
 
         total_train_samples = train['uni'].shape[0]
-        train_gen = self.get_sample_generator(train,
-                                              batch_size=opt.batch_size)
+        train_gen = self.get_sample_generator(
+            train,
+            batch_size=opt.batch_size
+        )
         self.steps_per_epoch = int(np.ceil(total_train_samples / float(opt.batch_size)))
 
         total_dev_samples = dev['uni'].shape[0]
