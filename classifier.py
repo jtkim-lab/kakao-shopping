@@ -30,7 +30,7 @@ from network import TextOnly, top1_acc
 opt = Option('./config.json')
 cate1 = json.loads(open(opt.cate1, 'r').read())
 DEV_DATA_LIST = opt.dev_data_list
-
+os.environ["CUDA_VISIBLE_DEVICES"]=opt.gpu
 
 class Classifier():
     def __init__(self):
