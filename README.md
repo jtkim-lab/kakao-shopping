@@ -1,11 +1,21 @@
 # shopping-classification by 김앤강
 
-## Supported Python version
+## Supported Python Version
 - Python 3
 
+## Database Creation
+- All datasets should be converted to the database based on `h5py`, in order to run this project.
+- `y_vocab` file: Run `python data.py build_y_vocab`.
+- `train` dataset: Run `python data.py make_db train`.
+- `dev` dataset: Run `python data.py make_db dev ./data/dev --train_ratio=0.0`.
+- `test` dataset: Run `python data.py make_db test ./data/test --train_ratio=0.0`.
+
+## Classifier Training
+- To train a classifier using `train` dataset, run `train_train.sh`.
+
 ## Submission
-- Dev dataset: After executing `predict_dev.sh` and `compress_dev.sh`, you can submit the corresponding `zip` file, `kimandkaing_predict_dev.zip`.
-- Test dataset: After executing `predict_test.sh` and `compress_test.sh`, you can submit the corresponding `zip` file, `kimandkaing_predict_test.zip`.
+- `dev` dataset: After executing `predict_dev.sh` and `compress_dev.sh`, you can submit the corresponding `zip` file, `kimandkaing_predict_dev.zip`.
+- `test` dataset: After executing `predict_test.sh` and `compress_test.sh`, you can submit the corresponding `zip` file, `kimandkaing_predict_test.zip`.
 
 ## Authors
 - [Jungtaek Kim](https://github.com/jungtaekkim)
