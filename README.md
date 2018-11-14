@@ -3,6 +3,10 @@
 ## Supported Python version
 - Python 3
 
+## Submission
+- Dev dataset: After executing `predict_dev.sh` and `compress_dev.sh`, you can submit the corresponding `zip` file, `kimandkaing_predict_dev.zip`.
+- Test dataset: After executing `predict_test.sh` and `compress_test.sh`, you can submit the corresponding `zip` file, `kimandkaing_predict_test.zip`.
+
 ## Authors
 - [Jungtaek Kim](https://github.com/jungtaekkim)
 - [Dongho Kang](https://github.com/eastskykang)
