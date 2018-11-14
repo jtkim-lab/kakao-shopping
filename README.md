@@ -11,7 +11,7 @@
 - `test` dataset: Run `python data.py make_db test ./data/test --train_ratio=0.0`.
 
 ## Classifier Training
-- To train a classifier using `train` dataset, run `train_train.sh`.
+- To train a classifier using `train` dataset, run `train_classifier.sh`.
 
 ## Submission
 - `dev` dataset: After executing `predict_dev.sh` and `compress_dev.sh`, you can submit the corresponding `zip` file, `kimandkaing_predict_dev.zip`.
