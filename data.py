@@ -16,7 +16,7 @@ import os
 os.environ['OMP_NUM_THREADS'] = '1'
 import re
 import sys
-import pickle
+import cPickle
 import traceback
 from collections import Counter
 from multiprocessing import Pool
@@ -30,11 +30,7 @@ from keras.utils.np_utils import to_categorical
 from misc import get_logger, Option
 opt = Option('./config.json')
 
-TRAIN_DATA_LIST = ['../datasets/train.chunk.0%d' % i for i in range(1, 10)]
-DEV_DATA_LIST = ['../datasets/dev.chunk.01']
-TEST_DATA_LIST = ['../datasets/test.chunk.01', '../datasets/test.chunk.02']
-
-re_sc = re.compile(r'[\!@#$%\^&\*\(\)-=\[\]\{\}\.,/\?~\+\'"|]')
+re_sc = re.compile('[\!@#$%\^&\*\(\)-=\[\]\{\}\.,/\?~\+\'"|]')
 
 
 class Reader(object):
@@ -45,9 +41,9 @@ class Reader(object):
         self.end_offset = end_offset
 
     def is_range(self, i):
-        if self.begin_offset is not None and i < self.begin_offset:
+        if self.begin_offset != None and i < self.begin_offset:
             return False
-        if self.end_offset is not None and self.end_offset <= i:
+        if self.end_offset != None and self.end_offset <= i:
             return False
         return True
 
@@ -129,27 +125,26 @@ def build_y_vocab(data):
 
 
 class Data:
-    y_vocab_path = './data/y_vocab.pkl'
+    y_vocab_path = './data/y_vocab.cPickle'
     tmp_chunk_tpl = 'tmp/base.chunk.%s'
 
     def __init__(self):
         self.logger = get_logger('data')
 
     def load_y_vocab(self):
-        self.y_vocab = pickle.loads(open(self.y_vocab_path, 'rb').read())
+        self.y_vocab = cPickle.loads(open(self.y_vocab_path).read())
 
     def build_y_vocab(self):
         pool = Pool(opt.num_workers)
         try:
-            rets = pool.map_async(
-                build_y_vocab,
-                [(data_path, 'train') for data_path in TRAIN_DATA_LIST]
-            ).get(999999999)
+            rets = pool.map_async(build_y_vocab,
+                                  [(data_path, 'train')
+                                   for data_path in opt.train_data_list]).get(99999999)
             pool.close()
             pool.join()
             y_vocab = set()
             for _y_vocab in rets:
-                for k in _y_vocab:
+                for k in _y_vocab.iterkeys():
                     y_vocab.add(k)
             self.y_vocab = {y: idx for idx, y in enumerate(y_vocab)}
         except KeyboardInterrupt:
@@ -157,9 +152,9 @@ class Data:
             pool.join()
             raise
         self.logger.info('size of y vocab: %s' % len(self.y_vocab))
-        pickle.dump(self.y_vocab, open(self.y_vocab_path, 'wb'), 2)
+        cPickle.dump(self.y_vocab, open(self.y_vocab_path, 'wb'), 2)
 
-    def _split_data(self, data_path_list, div, chunk_size=10000):
+    def _split_data(self, data_path_list, div, chunk_size):
         total = 0
         for data_path in data_path_list:
             h = h5py.File(data_path, 'r')
@@ -175,15 +170,15 @@ class Data:
         rets = []
         for pid, label, h, i in reader.generate():
             y, x = self.parse_data(label, h, i)
-            if data is None:
+            if y is None:
                 continue
             rets.append((pid, y, x))
         self.logger.info('sz=%s' % (len(rets)))
-        open(out_path, 'wb').write(pickle.dumps(rets, 2))
+        open(out_path, 'w').write(cPickle.dumps(rets, 2))
         self.logger.info('%s ~ %s done. (size: %s)' % (begin_offset, end_offset, end_offset - begin_offset))
 
-    def _preprocessing(self, cls, data_path_list, div):
-        chunk_offsets = self._split_data(data_path_list, div)
+    def _preprocessing(self, cls, data_path_list, div, chunk_size):
+        chunk_offsets = self._split_data(data_path_list, div, chunk_size)
         num_chunks = len(chunk_offsets)
         self.logger.info('split data into %d chunks, # of classes=%s' % (num_chunks, len(self.y_vocab)))
         pool = Pool(opt.num_workers)
@@ -194,7 +189,7 @@ class Data:
                                             self.tmp_chunk_tpl % cidx,
                                             begin,
                                             end)
-                                           for cidx, (begin, end) in enumerate(chunk_offsets)]).get(999999999)
+                                           for cidx, (begin, end) in enumerate(chunk_offsets)]).get(99999999999)
             pool.close()
             pool.join()
         except KeyboardInterrupt:
@@ -212,7 +207,6 @@ class Data:
         Y = to_categorical(Y, len(self.y_vocab))
 
         product = h['product'][i]
-        product = product.decode('utf-8')
         product = re_sc.sub(' ', product).strip().split()
         words = [w.strip() for w in product]
         words = [w for w in words
@@ -272,13 +266,13 @@ class Data:
     def make_db(self, data_name, output_dir='data/train', train_ratio=0.8):
         if data_name == 'train':
             div = 'train'
-            data_path_list = TRAIN_DATA_LIST
+            data_path_list = opt.train_data_list 
         elif data_name == 'dev':
             div = 'dev'
-            data_path_list = DEV_DATA_LIST
+            data_path_list = opt.dev_data_list 
         elif data_name == 'test':
             div = 'test'
-            data_path_list = TEST_DATA_LIST
+            data_path_list = opt.test_data_list
         else:
             assert False, '%s is not valid data name' % data_name
 
@@ -289,12 +283,15 @@ class Data:
         self.logger.info('make database from data(%s) with train_ratio(%s)' % (data_name, train_ratio))
 
         self.load_y_vocab()
-        num_input_chunks = self._preprocessing(Data, data_path_list, div)
+        num_input_chunks = self._preprocessing(Data,
+                                               data_path_list,
+                                               div,
+                                               chunk_size=opt.chunk_size)
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
 
         data_fout = h5py.File(os.path.join(output_dir, 'data.h5py'), 'w')
-        meta_fout = open(os.path.join(output_dir, 'meta'), 'wb')
+        meta_fout = open(os.path.join(output_dir, 'meta'), 'w')
 
         reader = Reader(data_path_list, div, None, None)
         tmp_size = reader.get_size()
@@ -320,12 +317,12 @@ class Data:
         chunk_size = opt.db_chunk_size
         chunk = {'train': self.init_chunk(chunk_size, len(self.y_vocab)),
                  'dev': self.init_chunk(chunk_size, len(self.y_vocab))}
-        chunk_order = list(range(num_input_chunks))
+        chunk_order = range(num_input_chunks)
         np.random.shuffle(chunk_order)
         for input_chunk_idx in chunk_order:
             path = os.path.join(self.tmp_chunk_tpl % input_chunk_idx)
-            self.logger.info('[INFORM] process %s ...' % path)
-            data = list(enumerate(pickle.loads(open(path, 'rb').read())))
+            self.logger.info('prcessing %s ...' % path)
+            data = list(enumerate(cPickle.loads(open(path).read())))
             np.random.shuffle(data)
             for data_idx, (pid, y, vw) in data:
                 if y is None:
@@ -369,7 +366,7 @@ class Data:
 
         data_fout.close()
         meta = {'y_vocab': self.y_vocab}
-        meta_fout.write(pickle.dumps(meta, 2))
+        meta_fout.write(cPickle.dumps(meta, 2))
         meta_fout.close()
 
         self.logger.info('# of classes: %s' % len(meta['y_vocab']))

@@ -15,7 +15,8 @@
 
 import os
 import json
-import pickle
+import cPickle
+from itertools import izip
 
 import fire
 import h5py
@@ -28,8 +29,8 @@ from misc import get_logger, Option
 from network import TextOnly, top1_acc
 
 opt = Option('./config.json')
-cate1 = json.loads(open('../datasets/cate1.json').read())
-DEV_DATA_LIST = ['../datasets/dev.chunk.01']
+cate1 = json.loads(open('../cate1.json').read())
+DEV_DATA_LIST = ['../dev.chunk.01']
 
 
 class Classifier():
@@ -51,7 +52,7 @@ class Classifier():
     def get_inverted_cate1(self, cate1):
         inv_cate1 = {}
         for d in ['b', 'm', 's', 'd']:
-            inv_cate1[d] = {v: k for k, v in cate1[d].items()}
+            inv_cate1[d] = {v: k for k, v in cate1[d].iteritems()}
         return inv_cate1
 
     def write_prediction_result(self, data, pred_y, meta, out_path, readable):
@@ -60,15 +61,14 @@ class Classifier():
             h = h5py.File(data_path, 'r')['dev']
             pid_order.extend(h['pid'][::])
 
-        y2l = {i: s for s, i in meta['y_vocab'].items()}
-        y2l = list(map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0])))
+        y2l = {i: s for s, i in meta['y_vocab'].iteritems()}
+        y2l = map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0]))
         inv_cate1 = self.get_inverted_cate1(cate1)
         rets = {}
-        for pid, p in zip(data['pid'], pred_y):
-            pid = pid.decode('utf-8')
+        for pid, p in izip(data['pid'], pred_y):
             y = np.argmax(p)
             label = y2l[y]
-            tkns = list(map(int, label.split('>')))
+            tkns = map(int, label.split('>'))
             b, m, s, d = tkns
             assert b in inv_cate1['b']
             assert m in inv_cate1['m']
@@ -85,12 +85,11 @@ class Classifier():
         with open(out_path, 'w') as fout:
             for pid in pid_order:
                 ans = rets.get(pid, no_answer.format(pid=pid))
-                fout.write(ans)
-                fout.write('\n')
+                print >> fout, ans
 
     def predict(self, data_root, model_root, test_root, test_div, out_path, readable=False):
         meta_path = os.path.join(data_root, 'meta')
-        meta = pickle.loads(open(meta_path, 'rb').read())
+        meta = cPickle.loads(open(meta_path).read())
 
         model_fname = os.path.join(model_root, 'model.h5')
         self.logger.info('# of classes(train): %s' % len(meta['y_vocab']))
@@ -114,7 +113,7 @@ class Classifier():
         data_path = os.path.join(data_root, 'data.h5py')
         meta_path = os.path.join(data_root, 'meta')
         data = h5py.File(data_path, 'r')
-        meta = pickle.loads(open(meta_path, 'rb').read())
+        meta = cPickle.loads(open(meta_path).read())
         self.weight_fname = os.path.join(out_dir, 'weights')
         self.model_fname = os.path.join(out_dir, 'model')
         if not os.path.isdir(out_dir):
@@ -136,28 +135,22 @@ class Classifier():
         model = textonly.get_model(self.num_classes)
 
         total_train_samples = train['uni'].shape[0]
-        train_gen = self.get_sample_generator(
-            train,
-            batch_size=opt.batch_size
-        )
+        train_gen = self.get_sample_generator(train,
+                                              batch_size=opt.batch_size)
         self.steps_per_epoch = int(np.ceil(total_train_samples / float(opt.batch_size)))
 
         total_dev_samples = dev['uni'].shape[0]
-        dev_gen = self.get_sample_generator(
-            dev,
-            batch_size=opt.batch_size
-        )
+        dev_gen = self.get_sample_generator(dev,
+                                            batch_size=opt.batch_size)
         self.validation_steps = int(np.ceil(total_dev_samples / float(opt.batch_size)))
 
-        model.fit_generator(
-            generator=train_gen,
-            steps_per_epoch=self.steps_per_epoch,
-            epochs=opt.num_epochs,
-            validation_data=dev_gen,
-            validation_steps=self.validation_steps,
-            shuffle=True,
-            callbacks=[checkpoint]
-        )
+        model.fit_generator(generator=train_gen,
+                            steps_per_epoch=self.steps_per_epoch,
+                            epochs=opt.num_epochs,
+                            validation_data=dev_gen,
+                            validation_steps=self.validation_steps,
+                            shuffle=True,
+                            callbacks=[checkpoint])
 
         model.load_weights(self.weight_fname) # loads from checkout point if exists
         open(self.model_fname + '.json', 'w').write(model.to_json())

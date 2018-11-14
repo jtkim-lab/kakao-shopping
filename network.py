@@ -42,15 +42,14 @@ class TextOnly:
 
         with tf.device('/gpu:0'):
             embd = Embedding(voca_size,
-                opt.embd_size,
-                name='uni_embd'
-            )
+                             opt.embd_size,
+                             name='uni_embd')
 
             t_uni = Input((max_len,), name="input_1")
-            t_uni_embd = embd(t_uni)
+            t_uni_embd = embd(t_uni)  # token
 
             w_uni = Input((max_len,), name="input_2")
-            w_uni_mat = Reshape((max_len, 1))(w_uni)
+            w_uni_mat = Reshape((max_len, 1))(w_uni)  # weight
 
             uni_embd_mat = dot([t_uni_embd, w_uni_mat], axes=1)
             uni_embd = Reshape((opt.embd_size, ))(uni_embd_mat)
@@ -61,8 +60,7 @@ class TextOnly:
             model = Model(inputs=[t_uni, w_uni], outputs=outputs)
             optm = keras.optimizers.Nadam(opt.lr)
             model.compile(loss='binary_crossentropy',
-                optimizer=optm,
-                metrics=[top1_acc]
-            )
+                        optimizer=optm,
+                        metrics=[top1_acc])
             model.summary(print_fn=lambda x: self.logger.info(x))
         return model
