@@ -15,8 +15,7 @@
 
 import os
 import json
-import cPickle
-from itertools import izip
+import pickle
 
 import fire
 import h5py
@@ -29,8 +28,8 @@ from misc import get_logger, Option
 from network import TextOnly, top1_acc
 
 opt = Option('./config.json')
-cate1 = json.loads(open('../cate1.json').read())
-DEV_DATA_LIST = ['../dev.chunk.01']
+cate1 = json.loads(open(opt.cate1, 'r').read())
+DEV_DATA_LIST = opt.dev_data_list
 
 
 class Classifier():
@@ -52,7 +51,7 @@ class Classifier():
     def get_inverted_cate1(self, cate1):
         inv_cate1 = {}
         for d in ['b', 'm', 's', 'd']:
-            inv_cate1[d] = {v: k for k, v in cate1[d].iteritems()}
+            inv_cate1[d] = {v: k for k, v in cate1[d].items()}
         return inv_cate1
 
     def write_prediction_result(self, data, pred_y, meta, out_path, readable):
@@ -61,14 +60,15 @@ class Classifier():
             h = h5py.File(data_path, 'r')['dev']
             pid_order.extend(h['pid'][::])
 
-        y2l = {i: s for s, i in meta['y_vocab'].iteritems()}
-        y2l = map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0]))
+        y2l = {i: s for s, i in meta['y_vocab'].items()}
+        y2l = list(map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0])))
         inv_cate1 = self.get_inverted_cate1(cate1)
         rets = {}
-        for pid, p in izip(data['pid'], pred_y):
+        for pid, p in zip(data['pid'], pred_y):
+            pid = pid.decode('utf-8')
             y = np.argmax(p)
             label = y2l[y]
-            tkns = map(int, label.split('>'))
+            tkns = list(map(int, label.split('>')))
             b, m, s, d = tkns
             assert b in inv_cate1['b']
             assert m in inv_cate1['m']
@@ -85,16 +85,19 @@ class Classifier():
         with open(out_path, 'w') as fout:
             for pid in pid_order:
                 ans = rets.get(pid, no_answer.format(pid=pid))
-                print >> fout, ans
+                fout.write(ans)
+                fout.write('\n')
 
     def predict(self, data_root, model_root, test_root, test_div, out_path, readable=False):
         meta_path = os.path.join(data_root, 'meta')
-        meta = cPickle.loads(open(meta_path).read())
+        meta = pickle.loads(open(meta_path, 'rb').read())
 
         model_fname = os.path.join(model_root, 'model.h5')
         self.logger.info('# of classes(train): %s' % len(meta['y_vocab']))
-        model = load_model(model_fname,
-                           custom_objects={'top1_acc': top1_acc})
+        model = load_model(
+            model_fname,
+            custom_objects={'top1_acc': top1_acc}
+        )
 
         test_path = os.path.join(test_root, 'data.h5py')
         test_data = h5py.File(test_path, 'r')
@@ -103,17 +106,19 @@ class Classifier():
         test_gen = self.get_sample_generator(test, opt.batch_size)
         total_test_samples = test['uni'].shape[0]
         steps = int(np.ceil(total_test_samples / float(opt.batch_size)))
-        pred_y = model.predict_generator(test_gen,
-                                         steps=steps,
-                                         workers=opt.num_predict_workers,
-                                         verbose=1)
+        pred_y = model.predict_generator(
+            test_gen,
+            steps=steps,
+            workers=opt.num_predict_workers,
+            verbose=1
+        )
         self.write_prediction_result(test, pred_y, meta, out_path, readable=readable)
 
     def train(self, data_root, out_dir):
         data_path = os.path.join(data_root, 'data.h5py')
         meta_path = os.path.join(data_root, 'meta')
         data = h5py.File(data_path, 'r')
-        meta = cPickle.loads(open(meta_path).read())
+        meta = pickle.loads(open(meta_path, 'rb').read())
         self.weight_fname = os.path.join(out_dir, 'weights')
         self.model_fname = os.path.join(out_dir, 'model')
         if not os.path.isdir(out_dir):
@@ -128,8 +133,13 @@ class Classifier():
         self.logger.info('# of train samples: %s' % train['cate'].shape[0])
         self.logger.info('# of dev samples: %s' % dev['cate'].shape[0])
 
-        checkpoint = ModelCheckpoint(self.weight_fname, monitor='val_loss',
-                                     save_best_only=True, mode='min', period=10)
+        checkpoint = ModelCheckpoint(
+            self.weight_fname,
+            monitor='val_loss',
+            save_best_only=True,
+            mode='min', 
+            period=1
+        )
 
         textonly = TextOnly()
         model = textonly.get_model(self.num_classes)
@@ -140,24 +150,27 @@ class Classifier():
         self.steps_per_epoch = int(np.ceil(total_train_samples / float(opt.batch_size)))
 
         total_dev_samples = dev['uni'].shape[0]
-        dev_gen = self.get_sample_generator(dev,
-                                            batch_size=opt.batch_size)
+        dev_gen = self.get_sample_generator(
+            dev,
+            batch_size=opt.batch_size
+        )
         self.validation_steps = int(np.ceil(total_dev_samples / float(opt.batch_size)))
 
-        model.fit_generator(generator=train_gen,
-                            steps_per_epoch=self.steps_per_epoch,
-                            epochs=opt.num_epochs,
-                            validation_data=dev_gen,
-                            validation_steps=self.validation_steps,
-                            shuffle=True,
-                            callbacks=[checkpoint])
+        model.fit_generator(
+            generator=train_gen,
+            steps_per_epoch=self.steps_per_epoch,
+            epochs=opt.num_epochs,
+            validation_data=dev_gen,
+            validation_steps=self.validation_steps,
+            shuffle=True,
+            callbacks=[checkpoint]
+        )
 
-        model.load_weights(self.weight_fname) # loads from checkout point if exists
+        model.load_weights(self.weight_fname)
         open(self.model_fname + '.json', 'w').write(model.to_json())
         model.save(self.model_fname + '.h5')
 
 
 if __name__ == '__main__':
     clsf = Classifier()
-    fire.Fire({'train': clsf.train,
-               'predict': clsf.predict})
+    fire.Fire({'train': clsf.train, 'predict': clsf.predict})

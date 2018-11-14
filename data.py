@@ -16,7 +16,7 @@ import os
 os.environ['OMP_NUM_THREADS'] = '1'
 import re
 import sys
-import cPickle
+import pickle
 import traceback
 from collections import Counter
 from multiprocessing import Pool
@@ -30,7 +30,7 @@ from keras.utils.np_utils import to_categorical
 from misc import get_logger, Option
 opt = Option('./config.json')
 
-re_sc = re.compile('[\!@#$%\^&\*\(\)-=\[\]\{\}\.,/\?~\+\'"|]')
+re_sc = re.compile(r'[\!@#$%\^&\*\(\)-=\[\]\{\}\.,/\?~\+\'"|]')
 
 
 class Reader(object):
@@ -41,9 +41,9 @@ class Reader(object):
         self.end_offset = end_offset
 
     def is_range(self, i):
-        if self.begin_offset != None and i < self.begin_offset:
+        if self.begin_offset is not None and i < self.begin_offset:
             return False
-        if self.end_offset != None and self.end_offset <= i:
+        if self.end_offset is not None and self.end_offset <= i:
             return False
         return True
 
@@ -125,26 +125,25 @@ def build_y_vocab(data):
 
 
 class Data:
-    y_vocab_path = './data/y_vocab.cPickle'
+    y_vocab_path = './data/y_vocab.pkl'
     tmp_chunk_tpl = 'tmp/base.chunk.%s'
 
     def __init__(self):
         self.logger = get_logger('data')
 
     def load_y_vocab(self):
-        self.y_vocab = cPickle.loads(open(self.y_vocab_path).read())
+        self.y_vocab = pickle.loads(open(self.y_vocab_path, 'rb').read())
 
     def build_y_vocab(self):
         pool = Pool(opt.num_workers)
         try:
             rets = pool.map_async(build_y_vocab,
-                                  [(data_path, 'train')
-                                   for data_path in opt.train_data_list]).get(99999999)
+                [(data_path, 'train') for data_path in opt.train_data_list]).get(999999999)
             pool.close()
             pool.join()
             y_vocab = set()
             for _y_vocab in rets:
-                for k in _y_vocab.iterkeys():
+                for k in _y_vocab:
                     y_vocab.add(k)
             self.y_vocab = {y: idx for idx, y in enumerate(y_vocab)}
         except KeyboardInterrupt:
@@ -152,7 +151,7 @@ class Data:
             pool.join()
             raise
         self.logger.info('size of y vocab: %s' % len(self.y_vocab))
-        cPickle.dump(self.y_vocab, open(self.y_vocab_path, 'wb'), 2)
+        pickle.dump(self.y_vocab, open(self.y_vocab_path, 'wb'), 2)
 
     def _split_data(self, data_path_list, div, chunk_size):
         total = 0
@@ -160,8 +159,7 @@ class Data:
             h = h5py.File(data_path, 'r')
             sz = h[div]['pid'].shape[0]
             total += sz
-        chunks = [(i, min(i + chunk_size, total))
-                  for i in range(0, total, chunk_size)]
+        chunks = [(i, min(i + chunk_size, total)) for i in range(0, total, chunk_size)]
         return chunks
 
     def preprocessing(self, data_path_list, div, begin_offset, end_offset, out_path):
@@ -174,7 +172,7 @@ class Data:
                 continue
             rets.append((pid, y, x))
         self.logger.info('sz=%s' % (len(rets)))
-        open(out_path, 'w').write(cPickle.dumps(rets, 2))
+        open(out_path, 'wb').write(pickle.dumps(rets, 2))
         self.logger.info('%s ~ %s done. (size: %s)' % (begin_offset, end_offset, end_offset - begin_offset))
 
     def _preprocessing(self, cls, data_path_list, div, chunk_size):
@@ -183,13 +181,7 @@ class Data:
         self.logger.info('split data into %d chunks, # of classes=%s' % (num_chunks, len(self.y_vocab)))
         pool = Pool(opt.num_workers)
         try:
-            pool.map_async(preprocessing, [(cls,
-                                            data_path_list,
-                                            div,
-                                            self.tmp_chunk_tpl % cidx,
-                                            begin,
-                                            end)
-                                           for cidx, (begin, end) in enumerate(chunk_offsets)]).get(99999999999)
+            pool.map_async(preprocessing, [(cls, data_path_list, div, self.tmp_chunk_tpl % cidx, begin, end) for cidx, (begin, end) in enumerate(chunk_offsets)]).get(999999999)
             pool.close()
             pool.join()
         except KeyboardInterrupt:
@@ -207,6 +199,7 @@ class Data:
         Y = to_categorical(Y, len(self.y_vocab))
 
         product = h['product'][i]
+        product = product.decode('utf-8')
         product = re_sc.sub(' ', product).strip().split()
         words = [w.strip() for w in product]
         words = [w for w in words
@@ -291,7 +284,7 @@ class Data:
             os.makedirs(output_dir)
 
         data_fout = h5py.File(os.path.join(output_dir, 'data.h5py'), 'w')
-        meta_fout = open(os.path.join(output_dir, 'meta'), 'w')
+        meta_fout = open(os.path.join(output_dir, 'meta'), 'wb')
 
         reader = Reader(data_path_list, div, None, None)
         tmp_size = reader.get_size()
@@ -317,12 +310,12 @@ class Data:
         chunk_size = opt.db_chunk_size
         chunk = {'train': self.init_chunk(chunk_size, len(self.y_vocab)),
                  'dev': self.init_chunk(chunk_size, len(self.y_vocab))}
-        chunk_order = range(num_input_chunks)
+        chunk_order = list(range(num_input_chunks))
         np.random.shuffle(chunk_order)
         for input_chunk_idx in chunk_order:
             path = os.path.join(self.tmp_chunk_tpl % input_chunk_idx)
-            self.logger.info('prcessing %s ...' % path)
-            data = list(enumerate(cPickle.loads(open(path).read())))
+            self.logger.info('[INFORM] process %s' % path)
+            data = list(enumerate(pickle.loads(open(path, 'rb').read())))
             np.random.shuffle(data)
             for data_idx, (pid, y, vw) in data:
                 if y is None:
@@ -366,7 +359,7 @@ class Data:
 
         data_fout.close()
         meta = {'y_vocab': self.y_vocab}
-        meta_fout.write(cPickle.dumps(meta, 2))
+        meta_fout.write(pickle.dumps(meta, 2))
         meta_fout.close()
 
         self.logger.info('# of classes: %s' % len(meta['y_vocab']))

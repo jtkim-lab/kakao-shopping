@@ -1,32 +1,33 @@
 {
     "train_data_list": [
-        "../train.chunk.01",
-        "../train.chunk.02",
-        "../train.chunk.03",
-        "../train.chunk.04",
-        "../train.chunk.05",
-        "../train.chunk.06",
-        "../train.chunk.07",
-        "../train.chunk.08",
-        "../train.chunk.09"
+        "../datasets/train.chunk.01",
+        "../datasets/train.chunk.02",
+        "../datasets/train.chunk.03",
+        "../datasets/train.chunk.04",
+        "../datasets/train.chunk.05",
+        "../datasets/train.chunk.06",
+        "../datasets/train.chunk.07",
+        "../datasets/train.chunk.08",
+        "../datasets/train.chunk.09"
     ],
     "dev_data_list": [
-        "../dev.chunk.01"
+        "../datasets/dev.chunk.01"
     ],
     "test_data_list": [
-        "../test.chunk.01",
-        "../test.chunk.02"
+        "../datasets/test.chunk.01",
+        "../datasets/test.chunk.02"
     ],
+    "cate1": "../datasets/cate1.json",
     "unigram_hash_size": 100000,
     "min_word_length": 2,
     "max_word_length": 31,
     "max_len": 32,
     "chunk_size": 20000,
     "db_chunk_size": 100000,
-    "num_workers": 6,
-    "num_predict_workers": 2,
+    "num_workers": 12,
+    "num_predict_workers": 1,
     "embd_size": 128,
     "lr": 1e-4,
-    "num_epochs": 100,
+    "num_epochs": 2,
     "batch_size": 1024
 }
