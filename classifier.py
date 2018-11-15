@@ -20,17 +20,19 @@ import pickle
 import fire
 import h5py
 import numpy as np
+import tensorflow as tf
 
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 
 from misc import get_logger, Option
 from network import TextOnly, top1_acc
+from network_ import Model, acc
 
 opt = Option('./config.json')
 cate1 = json.loads(open(opt.cate1, 'r').read())
-DEV_DATA_LIST = opt.dev_data_list
-os.environ["CUDA_VISIBLE_DEVICES"]=opt.gpu
+os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
+
 
 class Classifier():
     def __init__(self):
@@ -38,7 +40,9 @@ class Classifier():
         self.num_classes = 0
 
     def get_sample_generator(self, ds, batch_size):
-        left, limit = 0, ds['uni'].shape[0]
+        left = 0
+        limit = ds['uni'].shape[0]
+
         while True:
             right = min(left + batch_size, limit)
             X = [ds[t][left:right, :] for t in ['uni', 'w_uni']]
@@ -50,14 +54,21 @@ class Classifier():
 
     def get_inverted_cate1(self, cate1):
         inv_cate1 = {}
-        for d in ['b', 'm', 's', 'd']:
-            inv_cate1[d] = {v: k for k, v in cate1[d].items()}
+        for cur_elem in ['b', 'm', 's', 'd']:
+            inv_cate1[cur_elem] = {val: key for key, val in cate1[cur_elem].items()}
         return inv_cate1
 
-    def write_prediction_result(self, data, pred_y, meta, out_path, readable):
+    def get_batch(self, target_data, num_data, ind_start, batch_size):
+        cur_indices = np.arange(ind_start, ind_start + batch_size)
+        cur_uni = target_data['uni'][cur_indices, :]
+        cur_w_uni = target_data['w_uni'][cur_indices, :]
+        cur_cate = target_data['cate'][cur_indices, :]
+        return cur_uni, cur_w_uni, cur_cate
+
+    def write_preds(self, data, pred_y, meta, out_path, readable):
         pid_order = []
-        for data_path in DEV_DATA_LIST:
-            h = h5py.File(data_path, 'r')['dev']
+        for path_data in opt.dev_data_list:
+            h = h5py.File(path_data, 'r')['dev']
             pid_order.extend(h['pid'][::])
 
         y2l = {i: s for s, i in meta['y_vocab'].items()}
@@ -89,12 +100,12 @@ class Classifier():
                 fout.write(ans)
                 fout.write('\n')
 
-    def predict(self, data_root, model_root, test_root, test_div, out_path, readable=False):
-        meta_path = os.path.join(data_root, 'meta')
-        meta = pickle.loads(open(meta_path, 'rb').read())
+    def predict(self, path_root, model_root, test_root, test_div, out_path, readable=False):
+        path_meta = os.path.join(path_root, 'meta')
+        meta = pickle.loads(open(path_meta, 'rb').read())
 
         model_fname = os.path.join(model_root, 'model.h5')
-        self.logger.info('# of classes(train): %s' % len(meta['y_vocab']))
+        self.logger.info('# of classes in train %s' % len(meta['y_vocab']))
         model = load_model(
             model_fname,
             custom_objects={'top1_acc': top1_acc}
@@ -113,65 +124,56 @@ class Classifier():
             workers=opt.num_predict_workers,
             verbose=1
         )
-        self.write_prediction_result(test, pred_y, meta, out_path, readable=readable)
+        self.write_preds(test, pred_y, meta, out_path, readable)
 
-    def train(self, data_root, out_dir):
-        data_path = os.path.join(data_root, 'data.h5py')
-        meta_path = os.path.join(data_root, 'meta')
-        data = h5py.File(data_path, 'r')
-        meta = pickle.loads(open(meta_path, 'rb').read())
-        self.weight_fname = os.path.join(out_dir, 'weights')
-        self.model_fname = os.path.join(out_dir, 'model')
-        if not os.path.isdir(out_dir):
-            os.makedirs(out_dir)
+    def train(self, path_root, path_out):
+        path_data = os.path.join(path_root, 'data.h5py')
+        path_meta = os.path.join(path_root, 'meta')
+        data = h5py.File(path_data, 'r')
+        meta = pickle.loads(open(path_meta, 'rb').read())
 
-        self.logger.info('# of classes: %s' % len(meta['y_vocab']))
+        self.weight_fname = os.path.join(path_out, 'weights')
+        self.model_fname = os.path.join(path_out, 'model')
+        if not os.path.exists(path_out):
+            os.makedirs(path_out)
+
         self.num_classes = len(meta['y_vocab'])
 
-        train = data['train']
-        dev = data['dev']
+        data_train = data['train'] # ['cate', 'pid', 'uni', 'w_uni']
+        data_dev = data['dev']
 
-        self.logger.info('# of train samples: %s' % train['cate'].shape[0])
-        self.logger.info('# of dev samples: %s' % dev['cate'].shape[0])
+        num_samples_train = data_train['uni'].shape[0]
+        num_samples_dev = data_dev['uni'].shape[0]
 
-        checkpoint = ModelCheckpoint(
-            self.weight_fname,
-            monitor='val_loss',
-            save_best_only=True,
-            mode='min', 
-            period=1
-        )
+        self.logger.info('train cate {} pid {} uni {} w_uni {}'.format(data_train['cate'].shape, data_train['pid'].shape, data_train['uni'].shape, data_train['w_uni'].shape))
+        self.logger.info('dev cate {} pid {} uni {} w_uni {}'.format(data_dev['cate'].shape, data_dev['pid'].shape, data_dev['uni'].shape, data_dev['w_uni'].shape))
+        self.logger.info('# of classes %s' % len(meta['y_vocab']))
 
-        textonly = TextOnly()
-        model = textonly.get_model(self.num_classes)
+        self.logger.info('# of train samples %s' % data_train['cate'].shape[0])
+        self.logger.info('# of dev samples %s' % data_dev['cate'].shape[0])
 
-        total_train_samples = train['uni'].shape[0]
-        train_gen = self.get_sample_generator(
-            train,
-            batch_size=opt.batch_size
-        )
-        self.steps_per_epoch = int(np.ceil(total_train_samples / float(opt.batch_size)))
+        obj_model = Model()
+        model = obj_model.get_model(self.num_classes)
+        iter_total = tf.Variable(0, tf.int32)
+        add_iter = tf.assign_add(iter_total, 1)
 
-        total_dev_samples = dev['uni'].shape[0]
-        dev_gen = self.get_sample_generator(
-            dev,
-            batch_size=opt.batch_size
-        )
-        self.validation_steps = int(np.ceil(total_dev_samples / float(opt.batch_size)))
+        batch_size = opt.batch_size
 
-        model.fit_generator(
-            generator=train_gen,
-            steps_per_epoch=self.steps_per_epoch,
-            epochs=opt.num_epochs,
-            validation_data=dev_gen,
-            validation_steps=self.validation_steps,
-            shuffle=True,
-            callbacks=[checkpoint]
-        )
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            for ind_epoch in range(0, opt.num_epochs):
+                self.logger.info('current epoch {}'.format(ind_epoch + 1))
+                for ind_iter in range(0, int(num_samples_train / batch_size)):
+                    uni_train, w_uni_train, targets_train = self.get_batch(data_train, num_samples_train, ind_iter * batch_size, batch_size)
+                    _, cur_loss, _, cur_iter = sess.run([model['optimizer'], model['loss'], add_iter, iter_total], {
+                        model['uni']: uni_train,
+                        model['w_uni']: w_uni_train,
+                        model['targets']: targets_train,
+                        model['is_training']: True
+                    })
 
-        model.load_weights(self.weight_fname)
-        open(self.model_fname + '.json', 'w').write(model.to_json())
-        model.save(self.model_fname + '.h5')
+                    if cur_iter % opt.step_display == 0:
+                        self.logger.info('cur_iter {} cur_loss {:.4f}'.format(cur_iter, cur_loss))
 
 
 if __name__ == '__main__':

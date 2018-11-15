@@ -34,14 +34,14 @@ re_sc = re.compile(r'[\!@#$%\^&\*\(\)-=\[\]\{\}\.,/\?~\+\'"|]')
 
 
 class Reader(object):
-    def __init__(self, data_path_list, div, begin_offset, end_offset):
-        self.div = div
+    def __init__(self, data_path_list, div, offset_begin, end_offset):
         self.data_path_list = data_path_list
-        self.begin_offset = begin_offset
+        self.div = div
+        self.offset_begin = offset_begin
         self.end_offset = end_offset
 
     def is_range(self, i):
-        if self.begin_offset is not None and i < self.begin_offset:
+        if self.offset_begin is not None and i < self.offset_begin:
             return False
         if self.end_offset is not None and self.end_offset <= i:
             return False
@@ -53,11 +53,11 @@ class Reader(object):
         for data_path in self.data_path_list:
             h = h5py.File(data_path, 'r')
             sz = h[self.div]['pid'].shape[0]
-            if not self.begin_offset and not self.end_offset:
+            if not self.offset_begin and not self.end_offset:
                 offset += sz
                 count += sz
                 continue
-            if self.begin_offset and offset + sz < self.begin_offset:
+            if self.offset_begin and offset + sz < self.offset_begin:
                 offset += sz
                 continue
             if self.end_offset and self.end_offset < offset:
@@ -81,7 +81,7 @@ class Reader(object):
         for data_path in self.data_path_list:
             h = h5py.File(data_path, 'r')[self.div]
             sz = h['pid'].shape[0]
-            if self.begin_offset and offset + sz < self.begin_offset:
+            if self.offset_begin and offset + sz < self.offset_begin:
                 offset += sz
                 continue
             if self.end_offset and self.end_offset < offset:
@@ -116,9 +116,9 @@ def preprocessing(data):
 
 def build_y_vocab(data):
     try:
-        data_path, div = data
+        path_data, div = data
         reader = Reader([], div, None, None)
-        y_vocab = reader.get_y_vocab(data_path)
+        y_vocab = reader.get_y_vocab(path_data)
     except Exception:
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
     return y_vocab
@@ -153,7 +153,7 @@ class Data:
             pool.terminate()
             pool.join()
             raise
-        self.logger.info('size of y vocab: %s' % len(self.y_vocab))
+        self.logger.info('size of y_vocab {}'.format(len(self.y_vocab)))
         pickle.dump(self.y_vocab, open(self.y_vocab_path, 'wb'), 2)
 
     def _split_data(self, data_path_list, div, chunk_size):
@@ -174,14 +174,14 @@ class Data:
             if y is None:
                 continue
             rets.append((pid, y, x))
-        self.logger.info('sz=%s' % (len(rets)))
+        self.logger.info('sz {}'.format(len(rets)))
         open(out_path, 'wb').write(pickle.dumps(rets, 2))
-        self.logger.info('%s ~ %s done. (size: %s)' % (begin_offset, end_offset, end_offset - begin_offset))
+        self.logger.info('{}-{} (size {})'.format(begin_offset, end_offset, end_offset - begin_offset))
 
     def _preprocessing(self, cls, data_path_list, div, chunk_size):
         chunk_offsets = self._split_data(data_path_list, div, chunk_size)
         num_chunks = len(chunk_offsets)
-        self.logger.info('split data into %d chunks, # of classes=%s' % (num_chunks, len(self.y_vocab)))
+        self.logger.info('split data into {} chunks, # of classes {}'.format(num_chunks, len(self.y_vocab)))
         pool = Pool(opt.num_workers)
         try:
             pool.map_async(preprocessing, [(cls, data_path_list, div, self.tmp_chunk_tpl % cidx, begin, end) for cidx, (begin, end) in enumerate(chunk_offsets)]).get(999999999)
@@ -194,6 +194,7 @@ class Data:
         return num_chunks
 
     def parse_data(self, label, h, i):
+        # h: ['bcateid', 'brand', 'dcateid', 'img_feat', 'maker', 'mcateid', 'model', 'pid', 'price', 'product', 'scateid', 'updttm']
         Y = self.y_vocab.get(label)
         if Y is None and self.div in ['dev', 'test']:
             Y = 0
@@ -265,13 +266,13 @@ class Data:
             os.makedirs(opt.path_tmp)
 
         if data_name == 'train':
-            div = 'train'
+            str_div = 'train'
             data_path_list = opt.train_data_list 
         elif data_name == 'dev':
-            div = 'dev'
+            str_div = 'dev'
             data_path_list = opt.dev_data_list 
         elif data_name == 'test':
-            div = 'test'
+            str_div = 'test'
             data_path_list = opt.test_data_list
         else:
             assert False, '{} is not valid.'.format(data_name)
@@ -280,20 +281,20 @@ class Data:
         all_dev = train_ratio == 0.0
 
         np.random.seed(42)
-        self.logger.info('make database from data {} with train_ratio {}'.format(data_name, train_ratio))
+        self.logger.info('make database from {} dataset with train_ratio {}'.format(data_name, train_ratio))
 
         self.load_y_vocab()
         num_input_chunks = self._preprocessing(
             Data,
             data_path_list,
-            div,
+            str_div,
             chunk_size=opt.chunk_size
         )
 
-        data_fout = h5py.File(os.path.join(output_dir, 'data.h5py'), 'w')
+        fout_data = h5py.File(os.path.join(output_dir, 'data.h5py'), 'w')
         meta_fout = open(os.path.join(output_dir, 'meta'), 'wb')
 
-        reader = Reader(data_path_list, div, None, None)
+        reader = Reader(data_path_list, str_div, None, None)
         tmp_size = reader.get_size()
         train_indices, train_size = self.get_train_indices(tmp_size, train_ratio)
 
@@ -302,11 +303,11 @@ class Data:
             train_size = 1
             dev_size = tmp_size
         if all_train:
-            dev_size = 1
             train_size = tmp_size
+            dev_size = 1
 
-        train = data_fout.create_group('train')
-        dev = data_fout.create_group('dev')
+        train = fout_data.create_group('train')
+        dev = fout_data.create_group('dev')
         self.create_dataset(train, train_size, len(self.y_vocab))
         self.create_dataset(dev, dev_size, len(self.y_vocab))
         self.logger.info('train_size {} dev_size {}'.format(train_size, dev_size))
@@ -323,7 +324,7 @@ class Data:
         np.random.shuffle(chunk_order)
         for input_chunk_idx in chunk_order:
             path = os.path.join(self.tmp_chunk_tpl % input_chunk_idx)
-            self.logger.info('process %s' % path)
+            self.logger.info('process {}'.format(path))
             data = list(enumerate(pickle.loads(open(path, 'rb').read())))
             np.random.shuffle(data)
             for data_idx, (pid, y, vw) in data:
@@ -358,24 +359,24 @@ class Data:
                                 with_pid_field=t == 'dev')
                 num_samples[t] += chunk[t]['num']
 
-        for div in ['train', 'dev']:
-            ds = dataset[div]
-            size = num_samples[div]
+        for cur_div in ['train', 'dev']:
+            ds = dataset[cur_div]
+            size = num_samples[cur_div]
             shape = (size, opt.max_len)
             ds['uni'].resize(shape)
             ds['w_uni'].resize(shape)
             ds['cate'].resize((size, len(self.y_vocab)))
 
-        data_fout.close()
+        fout_data.close()
         meta = {'y_vocab': self.y_vocab}
         meta_fout.write(pickle.dumps(meta, 2))
         meta_fout.close()
 
-        self.logger.info('# of classes: %s' % len(meta['y_vocab']))
-        self.logger.info('# of samples on train: %s' % num_samples['train'])
-        self.logger.info('# of samples on dev: %s' % num_samples['dev'])
-        self.logger.info('data: %s' % os.path.join(output_dir, 'data.h5py'))
-        self.logger.info('meta: %s' % os.path.join(output_dir, 'meta'))
+        self.logger.info('# of classes %s' % len(meta['y_vocab']))
+        self.logger.info('# of samples in train %s' % num_samples['train'])
+        self.logger.info('# of samples in dev %s' % num_samples['dev'])
+        self.logger.info('data %s' % os.path.join(output_dir, 'data.h5py'))
+        self.logger.info('meta %s' % os.path.join(output_dir, 'meta'))
 
 if __name__ == '__main__':
     data = Data()
