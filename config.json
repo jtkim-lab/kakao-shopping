@@ -1,5 +1,5 @@
 {
-    "gpu": "0",
+    "gpu": "1",
     "path_data": "./data",
     "path_tmp": "./tmp",
     "train_data_list": [
