@@ -1,5 +1,7 @@
 {
     "gpu": "0",
+    "path_data": "./data",
+    "path_tmp": "./tmp",
     "train_data_list": [
         "../datasets/train.chunk.01",
         "../datasets/train.chunk.02",
