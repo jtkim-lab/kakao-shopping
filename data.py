@@ -125,7 +125,7 @@ def build_y_vocab(data):
 
 
 class Data:
-    y_vocab_path = './data/y_vocab.pkl'
+    y_vocab_path = os.path.join(opt.path_data, 'y_vocab.pkl')
     tmp_chunk_tpl = 'tmp/base.chunk.%s'
 
     def __init__(self):
@@ -135,6 +135,9 @@ class Data:
         self.y_vocab = pickle.loads(open(self.y_vocab_path, 'rb').read())
 
     def build_y_vocab(self):
+        if not os.path.exists(opt.path_data):
+            os.makedirs(opt.path_data)
+
         pool = Pool(opt.num_workers)
         try:
             rets = pool.map_async(build_y_vocab,
@@ -202,8 +205,7 @@ class Data:
         product = product.decode('utf-8')
         product = re_sc.sub(' ', product).strip().split()
         words = [w.strip() for w in product]
-        words = [w for w in words
-                 if len(w) >= opt.min_word_length and len(w) < opt.max_word_length]
+        words = [w for w in words if len(w) >= opt.min_word_length and len(w) < opt.max_word_length]
         if not words:
             return [None] * 2
 
@@ -257,6 +259,11 @@ class Data:
         return train_indices, train_size
 
     def make_db(self, data_name, output_dir='data/train', train_ratio=0.8):
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        if not os.path.exists(opt.path_tmp):
+            os.makedirs(opt.path_tmp)
+
         if data_name == 'train':
             div = 'train'
             data_path_list = opt.train_data_list 
@@ -267,13 +274,13 @@ class Data:
             div = 'test'
             data_path_list = opt.test_data_list
         else:
-            assert False, '%s is not valid data name' % data_name
+            assert False, '{} is not valid.'.format(data_name)
 
         all_train = train_ratio >= 1.0
         all_dev = train_ratio == 0.0
 
-        np.random.seed(17)
-        self.logger.info('make database from data(%s) with train_ratio(%s)' % (data_name, train_ratio))
+        np.random.seed(42)
+        self.logger.info('make database from data {} with train_ratio {}'.format(data_name, train_ratio))
 
         self.load_y_vocab()
         num_input_chunks = self._preprocessing(
@@ -282,8 +289,6 @@ class Data:
             div,
             chunk_size=opt.chunk_size
         )
-        if not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
 
         data_fout = h5py.File(os.path.join(output_dir, 'data.h5py'), 'w')
         meta_fout = open(os.path.join(output_dir, 'meta'), 'wb')
@@ -304,7 +309,7 @@ class Data:
         dev = data_fout.create_group('dev')
         self.create_dataset(train, train_size, len(self.y_vocab))
         self.create_dataset(dev, dev_size, len(self.y_vocab))
-        self.logger.info('train_size ~ %s, dev_size ~ %s' % (train_size, dev_size))
+        self.logger.info('train_size {} dev_size {}'.format(train_size, dev_size))
 
         sample_idx = 0
         dataset = {'train': train, 'dev': dev}
@@ -318,7 +323,7 @@ class Data:
         np.random.shuffle(chunk_order)
         for input_chunk_idx in chunk_order:
             path = os.path.join(self.tmp_chunk_tpl % input_chunk_idx)
-            self.logger.info('[INFORM] process %s' % path)
+            self.logger.info('process %s' % path)
             data = list(enumerate(pickle.loads(open(path, 'rb').read())))
             np.random.shuffle(data)
             for data_idx, (pid, y, vw) in data:
