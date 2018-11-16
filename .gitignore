@@ -16,3 +16,6 @@ model/
 # mac
 .DS_Store
 __MACOSX/
+
+# virtualenv
+.virtualenv/
