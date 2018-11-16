@@ -22,7 +22,7 @@ import h5py
 import numpy as np
 
 from keras.models import load_model
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, Tensorboard
 
 from misc import get_logger, Option
 from network import TextOnly, top1_acc
@@ -142,6 +142,12 @@ class Classifier():
             period=1
         )
 
+        # tensorboard call back 
+        tensorboard = Tensorboard(
+            log_dir='./logs',
+            batch_size=opt.batch_size,
+        )
+
         textonly = TextOnly()
         model = textonly.get_model(self.num_classes)
 
@@ -166,7 +172,7 @@ class Classifier():
             validation_data=dev_gen,
             validation_steps=self.validation_steps,
             shuffle=True,
-            callbacks=[checkpoint]
+            callbacks=[checkpoint, tensorboard]
         )
 
         model.load_weights(self.weight_fname)

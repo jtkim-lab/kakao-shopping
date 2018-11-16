@@ -13,6 +13,9 @@ tmp/
 data/
 model/
 
+# etc
+.vscode/
+
 # mac
 .DS_Store
 __MACOSX/
