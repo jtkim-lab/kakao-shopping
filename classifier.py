@@ -59,9 +59,14 @@ class Classifier():
         return inv_cate1
 
     def get_batch(self, target_data, num_data, ind_start, batch_size):
-        cur_indices = np.arange(ind_start, ind_start + batch_size)
+        if num_data < ind_start + batch_size:
+            cur_indices = np.arange(ind_start, num_data)
+        else:
+            cur_indices = np.arange(ind_start, ind_start + batch_size)
         cur_uni = target_data['uni'][cur_indices, :]
         cur_w_uni = target_data['w_uni'][cur_indices, :]
+        cur_img_feat = target_data['img_feat'][cur_indices, :]
+        cur_price = target_data['price'][list(cur_indices)]
         cur_cate = target_data['cate'][cur_indices, :]
         return cur_uni, cur_w_uni, cur_cate
 
@@ -100,31 +105,43 @@ class Classifier():
                 fout.write(ans)
                 fout.write('\n')
 
-    def predict(self, path_root, model_root, test_root, test_div, out_path, readable=False):
+    def predict(self, path_root, model_root, str_test, div_test, path_out, readable=False):
         path_meta = os.path.join(path_root, 'meta')
         meta = pickle.loads(open(path_meta, 'rb').read())
-
-        model_fname = os.path.join(model_root, 'model.h5')
         self.logger.info('# of classes in train %s' % len(meta['y_vocab']))
-        model = load_model(
-            model_fname,
-            custom_objects={'top1_acc': top1_acc}
-        )
+        self.num_classes = len(meta['y_vocab'])
 
-        test_path = os.path.join(test_root, 'data.h5py')
-        test_data = h5py.File(test_path, 'r')
+        path_test = os.path.join(str_test, 'data.h5py')
+        data_test = h5py.File(path_test, 'r')
+        data_test = data_test[div_test]
+        
+        num_samples_test = data_test['uni'].shape[0]
+        batch_size = opt.batch_size
+        self.logger.info('# of test samples {}'.format(num_samples_test))
 
-        test = test_data[test_div]
-        test_gen = self.get_sample_generator(test, opt.batch_size)
-        total_test_samples = test['uni'].shape[0]
-        steps = int(np.ceil(total_test_samples / float(opt.batch_size)))
-        pred_y = model.predict_generator(
-            test_gen,
-            steps=steps,
-            workers=opt.num_predict_workers,
-            verbose=1
-        )
-        self.write_preds(test, pred_y, meta, out_path, readable)
+        preds_test = []
+        obj_model = Model()
+        model = obj_model.get_model(self.num_classes)
+
+        saver = tf.train.Saver()
+        with tf.Session() as sess:
+            saver.restore(sess, tf.train.latest_checkpoint(opt.path_model))
+
+            iter_total = int(num_samples_test / batch_size)
+            if num_samples_test % batch_size > 0:
+                iter_total += 1
+            for ind_iter in range(0, iter_total):
+                uni_test, w_uni_test, targets_test = self.get_batch(data_test, num_samples_test, ind_iter * batch_size, batch_size)
+
+                cur_preds = sess.run(model['preds'], {
+                    model['uni']: uni_test,
+                    model['w_uni']: w_uni_test,
+                    model['is_training']: False
+                })
+                preds_test += list(cur_preds)
+        preds_test = np.array(preds_test)
+        print(preds_test.shape)
+        self.write_preds(data_test, preds_test, meta, path_out, readable)
 
     def train(self, path_root, path_out):
         path_data = os.path.join(path_root, 'data.h5py')
@@ -139,14 +156,15 @@ class Classifier():
 
         self.num_classes = len(meta['y_vocab'])
 
-        data_train = data['train'] # ['cate', 'pid', 'uni', 'w_uni']
+        data_train = data['train'] # ['cate', 'pid', 'uni', 'w_uni'] + ['price', 'img_feat']
         data_dev = data['dev']
 
         num_samples_train = data_train['uni'].shape[0]
         num_samples_dev = data_dev['uni'].shape[0]
+        batch_size = opt.batch_size
 
-        self.logger.info('train cate {} pid {} uni {} w_uni {}'.format(data_train['cate'].shape, data_train['pid'].shape, data_train['uni'].shape, data_train['w_uni'].shape))
-        self.logger.info('dev cate {} pid {} uni {} w_uni {}'.format(data_dev['cate'].shape, data_dev['pid'].shape, data_dev['uni'].shape, data_dev['w_uni'].shape))
+        self.logger.info('train cate {} pid {} uni {} w_uni {} price {} img_feat {}'.format(data_train['cate'].shape, data_train['pid'].shape, data_train['uni'].shape, data_train['w_uni'].shape, data_train['price'], data_train['img_feat']))
+        self.logger.info('dev cate {} pid {} uni {} w_uni {} price {} img_feat {}'.format(data_dev['cate'].shape, data_dev['pid'].shape, data_dev['uni'].shape, data_dev['w_uni'].shape, data_dev['price'], data_dev['img_feat']))
         self.logger.info('# of classes %s' % len(meta['y_vocab']))
 
         self.logger.info('# of train samples %s' % data_train['cate'].shape[0])
@@ -157,8 +175,9 @@ class Classifier():
         iter_total = tf.Variable(0, tf.int32)
         add_iter = tf.assign_add(iter_total, 1)
 
-        batch_size = opt.batch_size
+#        uni_dev, w_uni_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, num_samples_dev)
 
+        saver = tf.train.Saver()
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for ind_epoch in range(0, opt.num_epochs):
@@ -174,6 +193,15 @@ class Classifier():
 
                     if cur_iter % opt.step_display == 0:
                         self.logger.info('cur_iter {} cur_loss {:.4f}'.format(cur_iter, cur_loss))
+#                        cur_loss_dev = sess.run(model['loss'], {
+#                            model['uni']: uni_dev,
+#                            model['w_uni']: w_uni_dev,
+#                            model['targets']: targets_dev,
+#                            model['is_training']: False
+#                        })
+#                        self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
+                if (ind_epoch + 1) % opt.step_save == 0:
+                    saver.save(sess, os.path.join(opt.path_model, opt.str_model), global_step=iter_total)
 
 
 if __name__ == '__main__':

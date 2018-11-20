@@ -193,6 +193,20 @@ class Data:
             raise
         return num_chunks
 
+    def get_words(self, str_target, ind):
+        str_all = str_target[ind]
+        str_all = str_all.decode('utf-8')
+        str_all = re_sc.sub(' ', str_all).strip().split()
+        words = [elem_word.strip() for elem_word in str_all]
+        words = [elem_word for elem_word in words if len(elem_word) >= opt.min_word_length and len(elem_word) < opt.max_word_length]
+        if not words:
+            return [None] * 2
+        x = [hash(elem_word) % opt.unigram_hash_size + 1 for elem_word in words]
+        return x
+
+    def get_price(self, price):
+        return np.mean(price) / 10000.0
+
     def parse_data(self, label, h, i):
         # h: ['bcateid', 'brand', 'dcateid', 'img_feat', 'maker', 'mcateid', 'model', 'pid', 'price', 'product', 'scateid', 'updttm']
         Y = self.y_vocab.get(label)
@@ -202,15 +216,9 @@ class Data:
             return [None] * 2
         Y = to_categorical(Y, len(self.y_vocab))
 
-        product = h['product'][i]
-        product = product.decode('utf-8')
-        product = re_sc.sub(' ', product).strip().split()
-        words = [w.strip() for w in product]
-        words = [w for w in words if len(w) >= opt.min_word_length and len(w) < opt.max_word_length]
-        if not words:
-            return [None] * 2
-
-        x = [hash(w) % opt.unigram_hash_size + 1 for w in words]
+        x = []
+        for elem in [h['product'], h['maker'], h['model']]:
+            x += self.get_words(elem, i)
         xv = Counter(x).most_common(opt.max_len)
 
         x = np.zeros(opt.max_len, dtype=np.float32)
@@ -218,20 +226,32 @@ class Data:
         for i in range(len(xv)):
             x[i] = xv[i][0]
             v[i] = xv[i][1]
-        return Y, (x, v)
+
+        price = self.get_price(h['price'])
+        img_feat = np.zeros(opt.len_img_feat)
+#        img_feat = np.array(h['img_feat'][:opt.len_img_feat])
+        return Y, (x, v, price, img_feat)
 
     def create_dataset(self, g, size, num_classes):
-        shape = (size, opt.max_len)
-        g.create_dataset('uni', shape, chunks=True, dtype=np.int32)
-        g.create_dataset('w_uni', shape, chunks=True, dtype=np.float32)
+        shape_w = (size, opt.max_len)
+        shape_img = (size, opt.len_img_feat)
+
+        g.create_dataset('uni', shape_w, chunks=True, dtype=np.int32)
+        g.create_dataset('w_uni', shape_w, chunks=True, dtype=np.float32)
+        g.create_dataset('img_feat', shape_img, chunks=True, dtype=np.float32)
+        g.create_dataset('price', (size,), chunks=True, dtype=np.float32)
         g.create_dataset('cate', (size, num_classes), chunks=True, dtype=np.int32)
         g.create_dataset('pid', (size,), chunks=True, dtype='S12')
 
     def init_chunk(self, chunk_size, num_classes):
-        chunk_shape = (chunk_size, opt.max_len)
+        chunk_shape_w = (chunk_size, opt.max_len)
+        chunk_shape_img = (chunk_size, opt.len_img_feat)
+
         chunk = {}
-        chunk['uni'] = np.zeros(shape=chunk_shape, dtype=np.int32)
-        chunk['w_uni'] = np.zeros(shape=chunk_shape, dtype=np.float32)
+        chunk['uni'] = np.zeros(shape=chunk_shape_w, dtype=np.int32)
+        chunk['w_uni'] = np.zeros(shape=chunk_shape_w, dtype=np.float32)
+        chunk['img_feat'] = np.zeros(shape=chunk_shape_img, dtype=np.float32)
+        chunk['price'] = []
         chunk['cate'] = np.zeros(shape=(chunk_size, num_classes), dtype=np.int32)
         chunk['pid'] = []
         chunk['num'] = 0
@@ -241,6 +261,8 @@ class Data:
         num = chunk['num']
         dataset['uni'][offset:offset + num, :] = chunk['uni'][:num]
         dataset['w_uni'][offset:offset + num, :] = chunk['w_uni'][:num]
+        dataset['img_feat'][offset:offset + num, :] = chunk['img_feat'][:num]
+        dataset['price'][offset:offset + num] = chunk['price'][:num]
         dataset['cate'][offset:offset + num] = chunk['cate'][:num]
         if with_pid_field:
             dataset['pid'][offset:offset + num] = chunk['pid'][:num]
@@ -250,6 +272,8 @@ class Data:
         y_num = B['cate'].shape[1]
         A['uni'][offset:offset + num, :] = B['uni'][:num]
         A['w_uni'][offset:offset + num, :] = B['w_uni'][:num]
+        A['img_feat'][offset:offset + num, :] = B['img_feat'][:num]
+        A['price'][offset:offset + num] = B['w_uni'][:num]
         A['cate'][offset:offset + num, y_offset:y_offset + y_num] = B['cate'][:num]
         if with_pid_field:
             A['pid'][offset:offset + num] = B['pid'][:num]
@@ -330,7 +354,7 @@ class Data:
             for data_idx, (pid, y, vw) in data:
                 if y is None:
                     continue
-                v, w = vw
+                v, w, price, img_feat = vw
                 is_train = train_indices[sample_idx + data_idx]
                 if all_dev:
                     is_train = False
@@ -342,6 +366,8 @@ class Data:
                 idx = c['num']
                 c['uni'][idx] = v
                 c['w_uni'][idx] = w
+                c['price'].append(price)
+                c['img_feat'][idx] = img_feat
                 c['cate'][idx] = y
                 c['num'] += 1
                 if not is_train:
@@ -362,9 +388,12 @@ class Data:
         for cur_div in ['train', 'dev']:
             ds = dataset[cur_div]
             size = num_samples[cur_div]
-            shape = (size, opt.max_len)
-            ds['uni'].resize(shape)
-            ds['w_uni'].resize(shape)
+            shape_w = (size, opt.max_len)
+            shape_img = (size, opt.len_img_feat)
+            ds['uni'].resize(shape_w)
+            ds['w_uni'].resize(shape_w)
+            ds['img_feat'].resize(shape_img)
+            ds['price'].resize((size,))
             ds['cate'].resize((size, len(self.y_vocab)))
 
         fout_data.close()

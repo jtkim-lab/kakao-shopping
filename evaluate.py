@@ -19,25 +19,24 @@ import h5py
 import numpy as np
 
 
-def evaluate(predict_path, data_path, div, y_vocab_path):
+def evaluate(predict_path, data_path, div, path_y_vocab):
     h = h5py.File(data_path, 'r')[div]
-    y_vocab = pickle.loads(open(y_vocal_path).read())
+    y_vocab = pickle.loads(open(path_y_vocab, 'rb').read())
     inv_y_vocab = {
         v: k for k, v in y_vocab.items()
     }
     fin = open(predict_path, 'rb')
-    hit = {}
+    hit = {'b': 0, 'm': 0, 's': 0, 'd': 0}
     n = {'b': 0, 'm': 0, 's': 0, 'd': 0}
 
-    print('[INFORM] load ground-truth...')
+    print('[INFO] load ground-truth...')
     CATE = np.argmax(h['cate'], axis=1)
     for p, y in zip(fin, CATE):
+        p = p.decode('utf-8')
         pid, b, m, s, d = p.split('\t')
         b, m, s, d = list(map(int, [b, m, s, d]))
         gt = list(map(int, inv_y_vocab[y].split('>')))
-        for depth, _p, _g in zip(['b', 'm', 's', 'd'],
-                                 [b, m, s, d],
-                                 gt):
+        for depth, _p, _g in zip(['b', 'm', 's', 'd'], [b, m, s, d], gt):
             if _g == -1:
                 continue
             n[depth] = n.get(depth, 0) + 1
@@ -45,11 +44,9 @@ def evaluate(predict_path, data_path, div, y_vocab_path):
                 hit[depth] = hit.get(depth, 0) + 1
     for d in ['b', 'm', 's', 'd']:
         if n[d] > 0:
-            print('%s-Accuracy: %.3f(%s/%s)' % (d, hit[d] / float(n[d]), hit[d], n[d]))
-    score = sum([hit[d] / float(n[d]) * w
-                 for d, w in zip(['b', 'm', 's', 'd'],
-                                 [1.0, 1.2, 1.3, 1.4])]) / 4.0
-    print('score: %.3f' % score)
+            print('[INFO] {} accuracy: {:.3f}({}/{})'.format(d, hit[d] / float(n[d]), hit[d], n[d]))
+    score = sum([hit[d] / float(n[d]) * w for d, w in zip(['b', 'm', 's', 'd'],[1.0, 1.2, 1.3, 1.4])]) / 4.0
+    print('[INFO] score: %.3f' % score)
 
 if __name__ == '__main__':
     fire.Fire({'evaluate': evaluate})

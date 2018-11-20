@@ -24,9 +24,9 @@ class Model(object):
         targets = tf.placeholder(tf.float32, shape=(None, num_classes))
         is_training = tf.placeholder(tf.bool)
 
-        outs = tf.reshape(uni, [-1, max_len, 1])
+        outs = tf.expand_dims(uni, axis=2)
         outs = dense(outs, 128)
-        outs_w = tf.reshape(w_uni, [-1, 1, max_len])
+        outs_w = tf.expand_dims(w_uni, axis=1)
         
         outs = tf.matmul(outs_w, outs)
         outs = tf.squeeze(outs, axis=1)
@@ -35,7 +35,7 @@ class Model(object):
         outs = dropout(outs, rate=0.5, training=is_training)
         outs = dense(outs, num_classes)
 
-        preds = tf.nn.softmax(outs)
+        preds = tf.argmax(tf.nn.softmax(outs), axis=1)
         loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=targets, logits=outs)
         loss = tf.reduce_mean(loss)
         optimizer = tf.train.AdamOptimizer(opt.lr)
