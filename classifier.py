@@ -174,7 +174,7 @@ class Classifier():
         iter_total = tf.Variable(0, tf.int32)
         add_iter = tf.assign_add(iter_total, 1)
 
-        uni_dev, w_uni_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, int(num_samples_dev / 50))
+        uni_dev, w_uni_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, int(num_samples_dev / 100))
 
         saver = tf.train.Saver()
         with tf.Session() as sess:
