@@ -26,8 +26,7 @@ from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 
 from misc import get_logger, Option
-from network import TextOnly, top1_acc
-from network_ import Model, acc
+from network import Model
 
 opt = Option('./config.json')
 cate1 = json.loads(open(opt.cate1, 'r').read())
@@ -175,7 +174,7 @@ class Classifier():
         iter_total = tf.Variable(0, tf.int32)
         add_iter = tf.assign_add(iter_total, 1)
 
-#        uni_dev, w_uni_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, num_samples_dev)
+        uni_dev, w_uni_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, int(num_samples_dev / 50))
 
         saver = tf.train.Saver()
         with tf.Session() as sess:
@@ -193,13 +192,13 @@ class Classifier():
 
                     if cur_iter % opt.step_display == 0:
                         self.logger.info('cur_iter {} cur_loss {:.4f}'.format(cur_iter, cur_loss))
-#                        cur_loss_dev = sess.run(model['loss'], {
-#                            model['uni']: uni_dev,
-#                            model['w_uni']: w_uni_dev,
-#                            model['targets']: targets_dev,
-#                            model['is_training']: False
-#                        })
-#                        self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
+                        cur_loss_dev = sess.run(model['loss'], {
+                            model['uni']: uni_dev,
+                            model['w_uni']: w_uni_dev,
+                            model['targets']: targets_dev,
+                            model['is_training']: False
+                        })
+                        self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
                 if (ind_epoch + 1) % opt.step_save == 0:
                     saver.save(sess, os.path.join(opt.path_model, opt.str_model), global_step=iter_total)
 
