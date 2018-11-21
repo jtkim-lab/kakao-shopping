@@ -177,9 +177,20 @@ class Classifier():
 
         uni_dev, w_uni_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, int(num_samples_dev / 100))
 
+        # tensorboard 
+        tf.summary.scalar('loss', model['loss'])
+        merged = tf.summary.merge_all()
+        gs = tf.train.get_global_step(graph=None)
+
         saver = tf.train.Saver()
         with tf.Session() as sess:
+
+            # tensorboard 
+            writer = tf.summary.FileWriter(os.path.join(opt.path_tensorboard, 'train'), sess.graph)
+            
+            # init
             sess.run(tf.global_variables_initializer())
+
             for ind_epoch in range(0, opt.num_epochs):
                 self.logger.info('current epoch {}'.format(ind_epoch + 1))
                 for ind_iter in range(0, int(num_samples_train / batch_size)):
@@ -201,6 +212,11 @@ class Classifier():
                             model['is_training']: False,
                         })
                         self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
+
+                    if cur_iter % opt.step_display == 0:
+                        summary = sess.run([merged])
+                        writer.add_summary(summary, global_step=iter_total)
+
                 if (ind_epoch + 1) % opt.step_save == 0:
                     saver.save(sess, os.path.join(opt.path_model, opt.str_model), global_step=iter_total)
 
