@@ -10,6 +10,7 @@ kimandkang.predict.test.tsv
 *.swp
 
 # directories
+.vscode
 tmp/
 data/
 model/
