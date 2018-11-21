@@ -1,7 +1,9 @@
 {
     "gpu": "1",
     "path_data": "./data",
+    "path_model": "./model",
     "path_tmp": "./tmp",
+    "str_model": "our-model",
     "train_data_list": [
         "../datasets/train.chunk.01",
         "../datasets/train.chunk.02",
@@ -25,12 +27,17 @@
     "min_word_length": 2,
     "max_word_length": 31,
     "max_len": 32,
-    "chunk_size": 20000,
-    "db_chunk_size": 100000,
+    "len_img_feat": 2048,
+    "chunk_size": 10000,
+    "db_chunk_size": 10000,
     "num_workers": 12,
     "num_predict_workers": 1,
     "embd_size": 128,
-    "lr": 1e-4,
-    "num_epochs": 20,
-    "batch_size": 1024
+    "lr": 1e-3,
+    "rate_decay": 0.99,
+    "num_epochs": 100,
+    "batch_size": 1024,
+    "step_decay": 100,
+    "step_display": 100,
+    "step_save": 5
 }

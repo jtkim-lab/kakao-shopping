@@ -1,70 +1,75 @@
 # -*- coding: utf-8 -*-
-# Copyright 2017 Kakao, Recommendation Team
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import tensorflow as tf
-
-import keras
-from keras.models import Model
-from keras.layers.merge import dot
-from keras.layers import Dense, Input
-from keras.layers.core import Reshape
-
-from keras.layers.embeddings import Embedding
-from keras.layers.core import Dropout, Activation
 
 from misc import get_logger, Option
 opt = Option('./config.json')
 
+acc = tf.metrics.accuracy
+dense = tf.layers.dense
+dropout = tf.layers.dropout
+bn = tf.layers.batch_normalization
+relu = tf.nn.relu
+tanh = tf.nn.tanh
 
-def top1_acc(x, y):
-    return keras.metrics.top_k_categorical_accuracy(x, y, k=1)
 
-
-class TextOnly:
+class Model(object):
     def __init__(self):
-        self.logger = get_logger('textonly')
+        self.logger = get_logger('Model')
 
-    def get_model(self, num_classes, activation='sigmoid'):
-        max_len = opt.max_len
-        voca_size = opt.unigram_hash_size + 1
+    def get_model(self, num_classes, activation=relu):
+        len_max = opt.max_len
+        size_voca = opt.unigram_hash_size + 1
 
-        with tf.device('/gpu:0'):
-            embd = Embedding(
-                voca_size,
-                opt.embd_size,
-                name='uni_embd'
-            )
+        uni = tf.placeholder(tf.int32, shape=(None, len_max))
+        w_uni = tf.placeholder(tf.float32, shape=(None, len_max))
+        targets = tf.placeholder(tf.float32, shape=(None, num_classes))
+        is_training = tf.placeholder(tf.bool)
+        learning_rate = tf.placeholder(tf.float32)
 
-            t_uni = Input((max_len,), name="input_1")
-            t_uni_embd = embd(t_uni)
+        embedding = tf.get_variable('embedding', shape=(size_voca, 128), dtype=tf.float32)
+        outs = tf.nn.embedding_lookup(embedding, uni)
+        outs_w = tf.expand_dims(w_uni, axis=1)
+        
+        bias_1 = tf.get_variable('bias_1', shape=(1, 128), dtype=tf.float32)
+        outs = tf.matmul(outs_w, outs) + bias_1
+        outs = tf.squeeze(outs, axis=1)
+        outs = dense(outs, 128)
+        outs = activation(outs)
+        outs = bn(outs, training=is_training)
+#        outs = dropout(outs, rate=0.5, training=is_training)
+        outs = dense(outs, 256)
+        outs = activation(outs)
+        outs = bn(outs, training=is_training)
+#        outs = dense(outs, 512)
+#        outs = relu(outs)
+#        outs = bn(outs, training=is_training)
+#        outs = dense(outs, 256)
+#        outs = relu(outs)
+#        outs = bn(outs, training=is_training)
 
-            w_uni = Input((max_len,), name="input_2")
-            w_uni_mat = Reshape((max_len, 1))(w_uni)
+        outs = dense(outs, num_classes)
 
-            uni_embd_mat = dot([t_uni_embd, w_uni_mat], axes=1)
-            uni_embd = Reshape((opt.embd_size, ))(uni_embd_mat)
+        preds = tf.argmax(tf.nn.softmax(outs), axis=1)
+        loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=targets, logits=outs)
+        loss = tf.reduce_mean(loss)
+        opt_adam = tf.train.AdamOptimizer(learning_rate)
+        optimizer = opt_adam.minimize(loss)
 
-            embd_out = Dropout(rate=0.5)(uni_embd)
-            relu = Activation('relu', name='relu1')(embd_out)
-            outputs = Dense(num_classes, activation=activation)(relu)
-            model = Model(inputs=[t_uni, w_uni], outputs=outputs)
-            optm = keras.optimizers.Nadam(opt.lr)
-            model.compile(
-                loss='binary_crossentropy',
-                optimizer=optm,
-                metrics=[top1_acc]
-            )
-            model.summary(print_fn=lambda x: self.logger.info(x))
+        model = {
+            'uni': uni,
+            'w_uni': w_uni,
+            'targets': targets,
+            'is_training': is_training,
+            'learning_rate': learning_rate,
+            'outs': outs,
+            'preds': preds,
+            'loss': loss,
+            'optimizer': optimizer,
+        }
         return model
+
+
+if __name__ == '__main__':
+    model = Model()
+    model.get_model(17)

@@ -34,14 +34,14 @@ re_sc = re.compile(r'[\!@#$%\^&\*\(\)-=\[\]\{\}\.,/\?~\+\'"|]')
 
 
 class Reader(object):
-    def __init__(self, data_path_list, div, begin_offset, end_offset):
-        self.div = div
+    def __init__(self, data_path_list, div, offset_begin, end_offset):
         self.data_path_list = data_path_list
-        self.begin_offset = begin_offset
+        self.div = div
+        self.offset_begin = offset_begin
         self.end_offset = end_offset
 
     def is_range(self, i):
-        if self.begin_offset is not None and i < self.begin_offset:
+        if self.offset_begin is not None and i < self.offset_begin:
             return False
         if self.end_offset is not None and self.end_offset <= i:
             return False
@@ -53,11 +53,11 @@ class Reader(object):
         for data_path in self.data_path_list:
             h = h5py.File(data_path, 'r')
             sz = h[self.div]['pid'].shape[0]
-            if not self.begin_offset and not self.end_offset:
+            if not self.offset_begin and not self.end_offset:
                 offset += sz
                 count += sz
                 continue
-            if self.begin_offset and offset + sz < self.begin_offset:
+            if self.offset_begin and offset + sz < self.offset_begin:
                 offset += sz
                 continue
             if self.end_offset and self.end_offset < offset:
@@ -81,7 +81,7 @@ class Reader(object):
         for data_path in self.data_path_list:
             h = h5py.File(data_path, 'r')[self.div]
             sz = h['pid'].shape[0]
-            if self.begin_offset and offset + sz < self.begin_offset:
+            if self.offset_begin and offset + sz < self.offset_begin:
                 offset += sz
                 continue
             if self.end_offset and self.end_offset < offset:
@@ -116,9 +116,9 @@ def preprocessing(data):
 
 def build_y_vocab(data):
     try:
-        data_path, div = data
+        path_data, div = data
         reader = Reader([], div, None, None)
-        y_vocab = reader.get_y_vocab(data_path)
+        y_vocab = reader.get_y_vocab(path_data)
     except Exception:
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
     return y_vocab
@@ -153,7 +153,7 @@ class Data:
             pool.terminate()
             pool.join()
             raise
-        self.logger.info('size of y vocab: %s' % len(self.y_vocab))
+        self.logger.info('size of y_vocab {}'.format(len(self.y_vocab)))
         pickle.dump(self.y_vocab, open(self.y_vocab_path, 'wb'), 2)
 
     def _split_data(self, data_path_list, div, chunk_size):
@@ -174,14 +174,14 @@ class Data:
             if y is None:
                 continue
             rets.append((pid, y, x))
-        self.logger.info('sz=%s' % (len(rets)))
+        self.logger.info('sz {}'.format(len(rets)))
         open(out_path, 'wb').write(pickle.dumps(rets, 2))
-        self.logger.info('%s ~ %s done. (size: %s)' % (begin_offset, end_offset, end_offset - begin_offset))
+        self.logger.info('{}-{} (size {})'.format(begin_offset, end_offset, end_offset - begin_offset))
 
     def _preprocessing(self, cls, data_path_list, div, chunk_size):
         chunk_offsets = self._split_data(data_path_list, div, chunk_size)
         num_chunks = len(chunk_offsets)
-        self.logger.info('split data into %d chunks, # of classes=%s' % (num_chunks, len(self.y_vocab)))
+        self.logger.info('split data into {} chunks, # of classes {}'.format(num_chunks, len(self.y_vocab)))
         pool = Pool(opt.num_workers)
         try:
             pool.map_async(preprocessing, [(cls, data_path_list, div, self.tmp_chunk_tpl % cidx, begin, end) for cidx, (begin, end) in enumerate(chunk_offsets)]).get(999999999)
@@ -193,7 +193,22 @@ class Data:
             raise
         return num_chunks
 
+    def get_words(self, str_target, ind):
+        str_all = str_target[ind]
+        str_all = str_all.decode('utf-8')
+        str_all = re_sc.sub(' ', str_all).strip().split()
+        words = [elem_word.strip() for elem_word in str_all]
+        words = [elem_word for elem_word in words if len(elem_word) >= opt.min_word_length and len(elem_word) < opt.max_word_length]
+        if not words:
+            return [None] * 2
+        x = [hash(elem_word) % opt.unigram_hash_size + 1 for elem_word in words]
+        return x
+
+    def get_price(self, price):
+        return np.mean(price) / 10000.0
+
     def parse_data(self, label, h, i):
+        # h: ['bcateid', 'brand', 'dcateid', 'img_feat', 'maker', 'mcateid', 'model', 'pid', 'price', 'product', 'scateid', 'updttm']
         Y = self.y_vocab.get(label)
         if Y is None and self.div in ['dev', 'test']:
             Y = 0
@@ -201,15 +216,9 @@ class Data:
             return [None] * 2
         Y = to_categorical(Y, len(self.y_vocab))
 
-        product = h['product'][i]
-        product = product.decode('utf-8')
-        product = re_sc.sub(' ', product).strip().split()
-        words = [w.strip() for w in product]
-        words = [w for w in words if len(w) >= opt.min_word_length and len(w) < opt.max_word_length]
-        if not words:
-            return [None] * 2
-
-        x = [hash(w) % opt.unigram_hash_size + 1 for w in words]
+        x = []
+        for elem in [h['product'], h['maker'], h['model']]:
+            x += self.get_words(elem, i)
         xv = Counter(x).most_common(opt.max_len)
 
         x = np.zeros(opt.max_len, dtype=np.float32)
@@ -217,20 +226,32 @@ class Data:
         for i in range(len(xv)):
             x[i] = xv[i][0]
             v[i] = xv[i][1]
-        return Y, (x, v)
+
+        price = self.get_price(h['price'])
+        img_feat = np.zeros(opt.len_img_feat)
+#        img_feat = np.array(h['img_feat'][:opt.len_img_feat])
+        return Y, (x, v, price, img_feat)
 
     def create_dataset(self, g, size, num_classes):
-        shape = (size, opt.max_len)
-        g.create_dataset('uni', shape, chunks=True, dtype=np.int32)
-        g.create_dataset('w_uni', shape, chunks=True, dtype=np.float32)
+        shape_w = (size, opt.max_len)
+        shape_img = (size, opt.len_img_feat)
+
+        g.create_dataset('uni', shape_w, chunks=True, dtype=np.int32)
+        g.create_dataset('w_uni', shape_w, chunks=True, dtype=np.float32)
+        g.create_dataset('img_feat', shape_img, chunks=True, dtype=np.float32)
+        g.create_dataset('price', (size,), chunks=True, dtype=np.float32)
         g.create_dataset('cate', (size, num_classes), chunks=True, dtype=np.int32)
         g.create_dataset('pid', (size,), chunks=True, dtype='S12')
 
     def init_chunk(self, chunk_size, num_classes):
-        chunk_shape = (chunk_size, opt.max_len)
+        chunk_shape_w = (chunk_size, opt.max_len)
+        chunk_shape_img = (chunk_size, opt.len_img_feat)
+
         chunk = {}
-        chunk['uni'] = np.zeros(shape=chunk_shape, dtype=np.int32)
-        chunk['w_uni'] = np.zeros(shape=chunk_shape, dtype=np.float32)
+        chunk['uni'] = np.zeros(shape=chunk_shape_w, dtype=np.int32)
+        chunk['w_uni'] = np.zeros(shape=chunk_shape_w, dtype=np.float32)
+        chunk['img_feat'] = np.zeros(shape=chunk_shape_img, dtype=np.float32)
+        chunk['price'] = []
         chunk['cate'] = np.zeros(shape=(chunk_size, num_classes), dtype=np.int32)
         chunk['pid'] = []
         chunk['num'] = 0
@@ -240,6 +261,8 @@ class Data:
         num = chunk['num']
         dataset['uni'][offset:offset + num, :] = chunk['uni'][:num]
         dataset['w_uni'][offset:offset + num, :] = chunk['w_uni'][:num]
+        dataset['img_feat'][offset:offset + num, :] = chunk['img_feat'][:num]
+        dataset['price'][offset:offset + num] = chunk['price'][:num]
         dataset['cate'][offset:offset + num] = chunk['cate'][:num]
         if with_pid_field:
             dataset['pid'][offset:offset + num] = chunk['pid'][:num]
@@ -249,6 +272,8 @@ class Data:
         y_num = B['cate'].shape[1]
         A['uni'][offset:offset + num, :] = B['uni'][:num]
         A['w_uni'][offset:offset + num, :] = B['w_uni'][:num]
+        A['img_feat'][offset:offset + num, :] = B['img_feat'][:num]
+        A['price'][offset:offset + num] = B['w_uni'][:num]
         A['cate'][offset:offset + num, y_offset:y_offset + y_num] = B['cate'][:num]
         if with_pid_field:
             A['pid'][offset:offset + num] = B['pid'][:num]
@@ -265,13 +290,13 @@ class Data:
             os.makedirs(opt.path_tmp)
 
         if data_name == 'train':
-            div = 'train'
+            str_div = 'train'
             data_path_list = opt.train_data_list 
         elif data_name == 'dev':
-            div = 'dev'
+            str_div = 'dev'
             data_path_list = opt.dev_data_list 
         elif data_name == 'test':
-            div = 'test'
+            str_div = 'test'
             data_path_list = opt.test_data_list
         else:
             assert False, '{} is not valid.'.format(data_name)
@@ -280,20 +305,20 @@ class Data:
         all_dev = train_ratio == 0.0
 
         np.random.seed(42)
-        self.logger.info('make database from data {} with train_ratio {}'.format(data_name, train_ratio))
+        self.logger.info('make database from {} dataset with train_ratio {}'.format(data_name, train_ratio))
 
         self.load_y_vocab()
         num_input_chunks = self._preprocessing(
             Data,
             data_path_list,
-            div,
+            str_div,
             chunk_size=opt.chunk_size
         )
 
-        data_fout = h5py.File(os.path.join(output_dir, 'data.h5py'), 'w')
+        fout_data = h5py.File(os.path.join(output_dir, 'data.h5py'), 'w')
         meta_fout = open(os.path.join(output_dir, 'meta'), 'wb')
 
-        reader = Reader(data_path_list, div, None, None)
+        reader = Reader(data_path_list, str_div, None, None)
         tmp_size = reader.get_size()
         train_indices, train_size = self.get_train_indices(tmp_size, train_ratio)
 
@@ -302,11 +327,11 @@ class Data:
             train_size = 1
             dev_size = tmp_size
         if all_train:
-            dev_size = 1
             train_size = tmp_size
+            dev_size = 1
 
-        train = data_fout.create_group('train')
-        dev = data_fout.create_group('dev')
+        train = fout_data.create_group('train')
+        dev = fout_data.create_group('dev')
         self.create_dataset(train, train_size, len(self.y_vocab))
         self.create_dataset(dev, dev_size, len(self.y_vocab))
         self.logger.info('train_size {} dev_size {}'.format(train_size, dev_size))
@@ -323,13 +348,13 @@ class Data:
         np.random.shuffle(chunk_order)
         for input_chunk_idx in chunk_order:
             path = os.path.join(self.tmp_chunk_tpl % input_chunk_idx)
-            self.logger.info('process %s' % path)
+            self.logger.info('process {}'.format(path))
             data = list(enumerate(pickle.loads(open(path, 'rb').read())))
             np.random.shuffle(data)
             for data_idx, (pid, y, vw) in data:
                 if y is None:
                     continue
-                v, w = vw
+                v, w, price, img_feat = vw
                 is_train = train_indices[sample_idx + data_idx]
                 if all_dev:
                     is_train = False
@@ -341,6 +366,8 @@ class Data:
                 idx = c['num']
                 c['uni'][idx] = v
                 c['w_uni'][idx] = w
+                c['price'].append(price)
+                c['img_feat'][idx] = img_feat
                 c['cate'][idx] = y
                 c['num'] += 1
                 if not is_train:
@@ -358,24 +385,27 @@ class Data:
                                 with_pid_field=t == 'dev')
                 num_samples[t] += chunk[t]['num']
 
-        for div in ['train', 'dev']:
-            ds = dataset[div]
-            size = num_samples[div]
-            shape = (size, opt.max_len)
-            ds['uni'].resize(shape)
-            ds['w_uni'].resize(shape)
+        for cur_div in ['train', 'dev']:
+            ds = dataset[cur_div]
+            size = num_samples[cur_div]
+            shape_w = (size, opt.max_len)
+            shape_img = (size, opt.len_img_feat)
+            ds['uni'].resize(shape_w)
+            ds['w_uni'].resize(shape_w)
+            ds['img_feat'].resize(shape_img)
+            ds['price'].resize((size,))
             ds['cate'].resize((size, len(self.y_vocab)))
 
-        data_fout.close()
+        fout_data.close()
         meta = {'y_vocab': self.y_vocab}
         meta_fout.write(pickle.dumps(meta, 2))
         meta_fout.close()
 
-        self.logger.info('# of classes: %s' % len(meta['y_vocab']))
-        self.logger.info('# of samples on train: %s' % num_samples['train'])
-        self.logger.info('# of samples on dev: %s' % num_samples['dev'])
-        self.logger.info('data: %s' % os.path.join(output_dir, 'data.h5py'))
-        self.logger.info('meta: %s' % os.path.join(output_dir, 'meta'))
+        self.logger.info('# of classes %s' % len(meta['y_vocab']))
+        self.logger.info('# of samples in train %s' % num_samples['train'])
+        self.logger.info('# of samples in dev %s' % num_samples['dev'])
+        self.logger.info('data %s' % os.path.join(output_dir, 'data.h5py'))
+        self.logger.info('meta %s' % os.path.join(output_dir, 'meta'))
 
 if __name__ == '__main__':
     data = Data()
