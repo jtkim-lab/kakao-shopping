@@ -1,5 +1,5 @@
 {
-    "gpu": "0",
+    "gpu": "1",
     "path_data": "./data",
     "path_model": "./model",
     "path_tmp": "./tmp",
@@ -33,9 +33,11 @@
     "num_workers": 12,
     "num_predict_workers": 1,
     "embd_size": 128,
-    "lr": 1e-4,
-    "num_epochs": 10,
+    "lr": 1e-3,
+    "rate_decay": 0.99,
+    "num_epochs": 100,
     "batch_size": 1024,
+    "step_decay": 100,
     "step_display": 100,
-    "step_save": 1
+    "step_save": 5
 }

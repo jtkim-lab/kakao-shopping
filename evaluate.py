@@ -39,6 +39,8 @@ def evaluate(predict_path, data_path, div, path_y_vocab):
         for depth, _p, _g in zip(['b', 'm', 's', 'd'], [b, m, s, d], gt):
             if _g == -1:
                 continue
+            if _p != -1:
+                print('[INFO] prediction is not -1')
             n[depth] = n.get(depth, 0) + 1
             if _p == _g:
                 hit[depth] = hit.get(depth, 0) + 1

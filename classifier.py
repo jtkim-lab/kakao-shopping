@@ -124,7 +124,9 @@ class Classifier():
 
         saver = tf.train.Saver()
         with tf.Session() as sess:
-            saver.restore(sess, tf.train.latest_checkpoint(opt.path_model))
+            path_checkpoint = tf.train.latest_checkpoint(opt.path_model)
+            self.logger.info('load {}'.format(path_checkpoint))
+            saver.restore(sess, path_checkpoint)
 
             iter_total = int(num_samples_test / batch_size)
             if num_samples_test % batch_size > 0:
@@ -135,11 +137,10 @@ class Classifier():
                 cur_preds = sess.run(model['preds'], {
                     model['uni']: uni_test,
                     model['w_uni']: w_uni_test,
-                    model['is_training']: False
+                    model['is_training']: False,
                 })
                 preds_test += list(cur_preds)
         preds_test = np.array(preds_test)
-        print(preds_test.shape)
         self.write_preds(data_test, preds_test, meta, path_out, readable)
 
     def train(self, path_root, path_out):
@@ -187,7 +188,8 @@ class Classifier():
                         model['uni']: uni_train,
                         model['w_uni']: w_uni_train,
                         model['targets']: targets_train,
-                        model['is_training']: True
+                        model['is_training']: True,
+                        model['learning_rate']: opt.lr * opt.rate_decay**int(sess.run(iter_total) / float(opt.step_decay)),
                     })
 
                     if cur_iter % opt.step_display == 0:
@@ -196,7 +198,7 @@ class Classifier():
                             model['uni']: uni_dev,
                             model['w_uni']: w_uni_dev,
                             model['targets']: targets_dev,
-                            model['is_training']: False
+                            model['is_training']: False,
                         })
                         self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
                 if (ind_epoch + 1) % opt.step_save == 0:
