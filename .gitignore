@@ -14,6 +14,7 @@ kimandkang.predict.test.tsv
 tmp/
 data/
 model/
+tensorboard/
 
 # mac
 .DS_Store
