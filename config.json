@@ -1,5 +1,5 @@
 {
-    "gpu": "1",
+    "gpu": "0",
     "path_data": "./data",
     "path_model": "./model",
     "path_tmp": "./tmp",
@@ -8,12 +8,7 @@
         "../datasets/train.chunk.01",
         "../datasets/train.chunk.02",
         "../datasets/train.chunk.03",
-        "../datasets/train.chunk.04",
-        "../datasets/train.chunk.05",
-        "../datasets/train.chunk.06",
-        "../datasets/train.chunk.07",
-        "../datasets/train.chunk.08",
-        "../datasets/train.chunk.09"
+        "../datasets/train.chunk.04"
     ],
     "dev_data_list": [
         "../datasets/dev.chunk.01"
@@ -23,21 +18,21 @@
         "../datasets/test.chunk.02"
     ],
     "cate1": "../datasets/cate1.json",
-    "unigram_hash_size": 100000,
+    "unigram_hash_size": 200000,
     "min_word_length": 2,
     "max_word_length": 31,
-    "max_len": 32,
+    "max_len": 64,
     "len_img_feat": 2048,
-    "chunk_size": 10000,
-    "db_chunk_size": 10000,
+    "chunk_size": 40000,
+    "db_chunk_size": 40000,
     "num_workers": 12,
     "num_predict_workers": 1,
-    "embd_size": 128,
-    "lr": 1e-3,
-    "rate_decay": 0.99,
+    "size_embedding": 128,
+    "lr": 1e-4,
+    "rate_decay": 0.999,
     "num_epochs": 100,
     "batch_size": 1024,
     "step_decay": 100,
-    "step_display": 100,
+    "step_display": 500,
     "step_save": 5
 }

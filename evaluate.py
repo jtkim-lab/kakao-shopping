@@ -19,8 +19,8 @@ import h5py
 import numpy as np
 
 
-def evaluate(predict_path, data_path, div, path_y_vocab):
-    h = h5py.File(data_path, 'r')[div]
+def evaluate(predict_path, data_path, str_div, path_y_vocab):
+    h = h5py.File(data_path, 'r')[str_div]
     y_vocab = pickle.loads(open(path_y_vocab, 'rb').read())
     inv_y_vocab = {
         v: k for k, v in y_vocab.items()
@@ -39,8 +39,6 @@ def evaluate(predict_path, data_path, div, path_y_vocab):
         for depth, _p, _g in zip(['b', 'm', 's', 'd'], [b, m, s, d], gt):
             if _g == -1:
                 continue
-            if _p != -1:
-                print('[INFO] prediction is not -1')
             n[depth] = n.get(depth, 0) + 1
             if _p == _g:
                 hit[depth] = hit.get(depth, 0) + 1
