@@ -217,7 +217,8 @@ class Data:
         Y = to_categorical(Y, len(self.y_vocab))
 
         x = []
-        for elem in [h['product'], h['maker'], h['model']]:
+        list_texts = [h['product'], h['maker'], h['model']]
+        for elem in list_texts:
             x += self.get_words(elem, i)
         xv = Counter(x).most_common(opt.max_len)
 

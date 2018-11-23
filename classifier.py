@@ -71,9 +71,11 @@ class Classifier():
 
     def write_preds(self, data, pred_y, meta, out_path, readable):
         pid_order = []
-        for path_data in opt.dev_data_list:
-            h = h5py.File(path_data, 'r')['dev']
-            pid_order.extend(h['pid'][::])
+#        for path_data in opt.dev_data_list:
+#            h = h5py.File(path_data, 'r')['dev']
+#            cur_pid = h['pid'][::]
+#            pid_order.extend(cur_pid)
+        pid_order = data['pid']
 
         y2l = {i: s for s, i in meta['y_vocab'].items()}
         y2l = list(map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0])))
@@ -118,7 +120,7 @@ class Classifier():
         batch_size = opt.batch_size
         self.logger.info('# of test samples {}'.format(num_samples_test))
 
-        preds_test = []
+        probs_test = None
         obj_model = Model()
         model = obj_model.get_model(self.num_classes)
 
@@ -134,25 +136,25 @@ class Classifier():
             for ind_iter in range(0, iter_total):
                 uni_test, w_uni_test, targets_test = self.get_batch(data_test, num_samples_test, ind_iter * batch_size, batch_size)
 
-                cur_preds = sess.run(model['preds'], {
+                cur_probs = sess.run(model['probs'], {
                     model['uni']: uni_test,
                     model['w_uni']: w_uni_test,
                     model['is_training']: False,
                 })
-                preds_test += list(cur_preds)
-        preds_test = np.array(preds_test)
-        self.write_preds(data_test, preds_test, meta, path_out, readable)
+                if probs_test is None:
+                    probs_test = cur_probs
+                else:
+                    probs_test = np.vstack((probs_test, cur_probs))
+        self.write_preds(data_test, probs_test, meta, path_out, readable)
 
-    def train(self, path_root, path_out):
+    def train(self, path_root):
         path_data = os.path.join(path_root, 'data.h5py')
         path_meta = os.path.join(path_root, 'meta')
         data = h5py.File(path_data, 'r')
         meta = pickle.loads(open(path_meta, 'rb').read())
 
-        self.weight_fname = os.path.join(path_out, 'weights')
-        self.model_fname = os.path.join(path_out, 'model')
-        if not os.path.exists(path_out):
-            os.makedirs(path_out)
+        if not os.path.exists(opt.path_model):
+            os.makedirs(path_model)
 
         self.num_classes = len(meta['y_vocab'])
 

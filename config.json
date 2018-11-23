@@ -8,7 +8,12 @@
         "../datasets/train.chunk.01",
         "../datasets/train.chunk.02",
         "../datasets/train.chunk.03",
-        "../datasets/train.chunk.04"
+        "../datasets/train.chunk.04",
+        "../datasets/train.chunk.05",
+        "../datasets/train.chunk.06",
+        "../datasets/train.chunk.07",
+        "../datasets/train.chunk.08",
+        "../datasets/train.chunk.09"
     ],
     "dev_data_list": [
         "../datasets/dev.chunk.01"
@@ -21,10 +26,10 @@
     "unigram_hash_size": 200000,
     "min_word_length": 2,
     "max_word_length": 31,
-    "max_len": 64,
+    "max_len": 32,
     "len_img_feat": 2048,
-    "chunk_size": 40000,
-    "db_chunk_size": 40000,
+    "chunk_size": 10000,
+    "db_chunk_size": 10000,
     "num_workers": 12,
     "num_predict_workers": 1,
     "size_embedding": 128,

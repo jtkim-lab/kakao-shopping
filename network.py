@@ -51,7 +51,8 @@ class Model(object):
 
         outs = dense(outs, num_classes)
 
-        preds = tf.argmax(tf.nn.softmax(outs), axis=1)
+        probs = tf.nn.softmax(outs)
+        preds = tf.argmax(probs, axis=1)
         loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=targets, logits=outs)
         loss = tf.reduce_mean(loss)
         opt_adam = tf.train.AdamOptimizer(learning_rate)
@@ -64,6 +65,7 @@ class Model(object):
             'is_training': is_training,
             'learning_rate': learning_rate,
             'outs': outs,
+            'probs': probs,
             'preds': preds,
             'loss': loss,
             'optimizer': optimizer,
