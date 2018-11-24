@@ -34,7 +34,7 @@
     "num_predict_workers": 1,
     "size_embedding": 128,
     "lr": 1e-3,
-    "rate_decay": 0.999,
+    "rate_decay": 0.998,
     "num_epochs": 200,
     "batch_size": 1024,
     "step_decay": 100,
