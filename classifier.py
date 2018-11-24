@@ -71,11 +71,11 @@ class Classifier():
 
     def write_preds(self, data, pred_y, meta, out_path, readable):
         pid_order = []
-#        for path_data in opt.dev_data_list:
-#            h = h5py.File(path_data, 'r')['dev']
-#            cur_pid = h['pid'][::]
-#            pid_order.extend(cur_pid)
-        pid_order = data['pid']
+        for path_data in opt.dev_data_list:
+            h = h5py.File(path_data, 'r')['dev']
+            cur_pid = h['pid'][::]
+            pid_order.extend(cur_pid)
+#        pid_order = data['pid']
 
         y2l = {i: s for s, i in meta['y_vocab'].items()}
         y2l = list(map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0])))
