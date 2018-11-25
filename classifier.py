@@ -69,13 +69,24 @@ class Classifier():
         cur_cate = target_data['cate'][cur_indices, :]
         return cur_uni, cur_w_uni, cur_cate
 
-    def write_preds(self, data, pred_y, meta, out_path, readable):
+    def write_preds(self, data, pred_y, meta, out_path, readable, str_mode=None):
         pid_order = []
-        for path_data in opt.dev_data_list:
-            h = h5py.File(path_data, 'r')['dev']
-            cur_pid = h['pid'][::]
-            pid_order.extend(cur_pid)
-#        pid_order = data['pid']
+        if str_mode == 'dev' or str_mode == 'test':
+            if str_mode == 'dev':
+                list_data = opt.dev_data_list
+            elif str_mode == 'test':
+                list_data = opt.test_data_list
+            for path_data in opt.list_data:
+                h = h5py.File(path_data, 'r')['dev']
+                cur_pid = h['pid'][::]
+                pid_order.extend(cur_pid)
+        elif str_mode == 'train':
+            pid_order = data['pid']
+        else:
+            for path_data in opt.dev_data_list:
+                h = h5py.File(path_data, 'r')['dev']
+                cur_pid = h['pid'][::]
+                pid_order.extend(cur_pid)
 
         y2l = {i: s for s, i in meta['y_vocab'].items()}
         y2l = list(map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0])))
@@ -145,7 +156,17 @@ class Classifier():
                     probs_test = cur_probs
                 else:
                     probs_test = np.vstack((probs_test, cur_probs))
-        self.write_preds(data_test, probs_test, meta, path_out, readable)
+
+        # TODO(Jungtaek): make it smarter
+        if 'train' in str_test:
+            str_mode = 'train'
+        elif 'dev' in str_test:
+            str_mode = 'dev'
+        elif 'test' in str_test:
+            str_mode = 'test'
+        else:
+            str_mode = None
+        self.write_preds(data_test, probs_test, meta, path_out, readable, str_mode=str_mode)
 
     def train(self, path_root):
         path_data = os.path.join(path_root, 'data.h5py')
