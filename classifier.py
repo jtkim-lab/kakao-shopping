@@ -76,7 +76,7 @@ class Classifier():
                 list_data = opt.dev_data_list
             elif str_mode == 'test':
                 list_data = opt.test_data_list
-            for path_data in opt.list_data:
+            for path_data in list_data:
                 h = h5py.File(path_data, 'r')['dev']
                 cur_pid = h['pid'][::]
                 pid_order.extend(cur_pid)
