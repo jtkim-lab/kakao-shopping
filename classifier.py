@@ -77,7 +77,9 @@ class Classifier():
             elif str_mode == 'test':
                 list_data = opt.test_data_list
             for path_data in list_data:
-                h = h5py.File(path_data, 'r')['dev']
+                h = h5py.File(path_data, 'r')
+                print(list(h.keys()))
+                h = h['dev']
                 cur_pid = h['pid'][::]
                 pid_order.extend(cur_pid)
         elif str_mode == 'train':
@@ -94,7 +96,7 @@ class Classifier():
         rets = {}
         for pid, p in zip(data['pid'], pred_y):
             pid = pid.decode('utf-8')
-            y = np.argmax(p)
+            y = p
             label = y2l[y]
             tkns = list(map(int, label.split('>')))
             b, m, s, d = tkns
@@ -131,7 +133,7 @@ class Classifier():
         batch_size = opt.batch_size
         self.logger.info('# of test samples {}'.format(num_samples_test))
 
-        probs_test = None
+        preds_test = None
         obj_model = Model()
         model = obj_model.get_model(self.num_classes)
 
@@ -147,15 +149,15 @@ class Classifier():
             for ind_iter in range(0, iter_total):
                 uni_test, w_uni_test, targets_test = self.get_batch(data_test, num_samples_test, ind_iter * batch_size, batch_size)
 
-                cur_probs = sess.run(model['probs'], {
+                cur_preds = sess.run(model['preds'], {
                     model['uni']: uni_test,
                     model['w_uni']: w_uni_test,
                     model['is_training']: False,
                 })
-                if probs_test is None:
-                    probs_test = cur_probs
+                if preds_test is None:
+                    preds_test = cur_preds
                 else:
-                    probs_test = np.vstack((probs_test, cur_probs))
+                    preds_test = np.concatenate((preds_test, cur_preds))
 
         # TODO(Jungtaek): make it smarter
         if 'train' in str_test:
@@ -166,7 +168,7 @@ class Classifier():
             str_mode = 'test'
         else:
             str_mode = None
-        self.write_preds(data_test, probs_test, meta, path_out, readable, str_mode=str_mode)
+        self.write_preds(data_test, preds_test, meta, path_out, readable, str_mode=str_mode)
 
     def train(self, path_root):
         path_data = os.path.join(path_root, 'data.h5py')
@@ -207,16 +209,17 @@ class Classifier():
                 self.logger.info('current epoch {}'.format(ind_epoch + 1))
                 for ind_iter in range(0, int(num_samples_train / batch_size)):
                     uni_train, w_uni_train, targets_train = self.get_batch(data_train, num_samples_train, ind_iter * batch_size, batch_size)
+                    cur_lr = opt.lr * opt.rate_decay**int(sess.run(iter_total) / float(opt.step_decay))
                     _, cur_loss, _, cur_iter = sess.run([model['optimizer'], model['loss'], add_iter, iter_total], {
                         model['uni']: uni_train,
                         model['w_uni']: w_uni_train,
                         model['targets']: targets_train,
                         model['is_training']: True,
-                        model['learning_rate']: opt.lr * opt.rate_decay**int(sess.run(iter_total) / float(opt.step_decay)),
+                        model['learning_rate']: cur_lr,
                     })
 
                     if cur_iter % opt.step_display == 0:
-                        self.logger.info('cur_iter {} cur_loss {:.4f}'.format(cur_iter, cur_loss))
+                        self.logger.info('cur_iter {} cur_loss {:.4f} cur_lr {:.2E}'.format(cur_iter, cur_loss, cur_lr))
                         cur_loss_dev = sess.run(model['loss'], {
                             model['uni']: uni_dev,
                             model['w_uni']: w_uni_dev,
