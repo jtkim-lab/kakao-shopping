@@ -78,8 +78,7 @@ class Classifier():
                 list_data = opt.test_data_list
             for path_data in list_data:
                 h = h5py.File(path_data, 'r')
-                print(list(h.keys()))
-                h = h['dev']
+                h = h[str_mode]
                 cur_pid = h['pid'][::]
                 pid_order.extend(cur_pid)
         elif str_mode == 'train':
