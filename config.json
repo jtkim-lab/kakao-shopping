@@ -1,5 +1,5 @@
 {
-    "gpu": "1",
+    "gpu": "0",
     "path_data": "./data",
     "path_model": "./model",
     "path_tmp": "./tmp",
