@@ -25,6 +25,7 @@ import tqdm
 import fire
 import h5py
 import numpy as np
+import mmh3
 from keras.utils.np_utils import to_categorical
 
 from misc import get_logger, Option
@@ -125,14 +126,14 @@ def build_y_vocab(data):
 
 
 class Data:
-    y_vocab_path = os.path.join(opt.path_data, 'y_vocab.pkl')
+    path_y_vocab = os.path.join(opt.path_data, 'y_vocab.pkl')
     tmp_chunk_tpl = 'tmp/base.chunk.%s'
 
     def __init__(self):
         self.logger = get_logger('data')
 
     def load_y_vocab(self):
-        self.y_vocab = pickle.loads(open(self.y_vocab_path, 'rb').read())
+        self.y_vocab = pickle.loads(open(self.path_y_vocab, 'rb').read())
 
     def build_y_vocab(self):
         if not os.path.exists(opt.path_data):
@@ -154,7 +155,7 @@ class Data:
             pool.join()
             raise
         self.logger.info('size of y_vocab {}'.format(len(self.y_vocab)))
-        pickle.dump(self.y_vocab, open(self.y_vocab_path, 'wb'), 2)
+        pickle.dump(self.y_vocab, open(self.path_y_vocab, 'wb'))
 
     def _split_data(self, data_path_list, div, chunk_size):
         total = 0
@@ -175,7 +176,7 @@ class Data:
                 continue
             rets.append((pid, y, x))
         self.logger.info('sz {}'.format(len(rets)))
-        open(out_path, 'wb').write(pickle.dumps(rets, 2))
+        pickle.dump(rets, open(out_path, 'wb'))
         self.logger.info('{}-{} (size {})'.format(begin_offset, end_offset, end_offset - begin_offset))
 
     def _preprocessing(self, cls, data_path_list, div, chunk_size):
@@ -201,7 +202,9 @@ class Data:
         words = [elem_word for elem_word in words if len(elem_word) >= opt.min_word_length and len(elem_word) < opt.max_word_length]
         if not words:
             return [None] * 2
-        x = [hash(elem_word) % opt.unigram_hash_size + 1 for elem_word in words]
+
+        hash_func = lambda x: mmh3.hash(x, seed=42)
+        x = [hash_func(elem_word) % opt.unigram_hash_size + 1 for elem_word in words]
         return x
 
     def get_price(self, price):
@@ -317,7 +320,6 @@ class Data:
         )
 
         fout_data = h5py.File(os.path.join(output_dir, 'data.h5py'), 'w')
-        meta_fout = open(os.path.join(output_dir, 'meta'), 'wb')
 
         reader = Reader(data_path_list, str_div, None, None)
         tmp_size = reader.get_size()
@@ -375,8 +377,7 @@ class Data:
                     c['pid'].append(np.string_(pid))
                 for t in ['train', 'dev']:
                     if chunk[t]['num'] >= chunk_size:
-                        self.copy_chunk(dataset[t], chunk[t], num_samples[t],
-                                        with_pid_field=t == 'dev')
+                        self.copy_chunk(dataset[t], chunk[t], num_samples[t], with_pid_field=(t == 'dev'))
                         num_samples[t] += chunk[t]['num']
                         chunk[t] = self.init_chunk(chunk_size, len(self.y_vocab))
             sample_idx += len(data)
@@ -399,8 +400,7 @@ class Data:
 
         fout_data.close()
         meta = {'y_vocab': self.y_vocab}
-        meta_fout.write(pickle.dumps(meta, 2))
-        meta_fout.close()
+        pickle.dump(meta, open(os.path.join(output_dir, 'meta'), 'wb'))
 
         self.logger.info('# of classes %s' % len(meta['y_vocab']))
         self.logger.info('# of samples in train %s' % num_samples['train'])

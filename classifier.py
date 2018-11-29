@@ -121,7 +121,7 @@ class Classifier():
     def predict(self, path_root, model_root, str_test, div_test, path_out, readable=False):
         path_meta = os.path.join(path_root, 'meta')
         meta = pickle.loads(open(path_meta, 'rb').read())
-        self.logger.info('# of classes in train %s' % len(meta['y_vocab']))
+        self.logger.info('# of classes in train {}'.format(len(meta['y_vocab'])))
         self.num_classes = len(meta['y_vocab'])
 
         path_test = os.path.join(str_test, 'data.h5py')
