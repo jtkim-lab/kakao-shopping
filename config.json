@@ -9,7 +9,11 @@
         "../datasets/train.chunk.02",
         "../datasets/train.chunk.03",
         "../datasets/train.chunk.04",
-        "../datasets/train.chunk.05"
+        "../datasets/train.chunk.05",
+        "../datasets/train.chunk.06",
+        "../datasets/train.chunk.07",
+        "../datasets/train.chunk.08",
+        "../datasets/train.chunk.09"
     ],
     "dev_data_list": [
         "../datasets/dev.chunk.01"
