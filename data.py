@@ -142,7 +142,7 @@ class Data:
         pool = Pool(opt.num_workers)
         try:
             rets = pool.map_async(build_y_vocab,
-                [(data_path, 'train') for data_path in opt.train_data_list]).get(999999999)
+                [(data_path, 'train') for data_path in opt.train_data_list]).get(9999999)
             pool.close()
             pool.join()
             y_vocab = set()
@@ -185,7 +185,7 @@ class Data:
         self.logger.info('split data into {} chunks, # of classes {}'.format(num_chunks, len(self.y_vocab)))
         pool = Pool(opt.num_workers)
         try:
-            pool.map_async(preprocessing, [(cls, data_path_list, div, self.tmp_chunk_tpl % cidx, begin, end) for cidx, (begin, end) in enumerate(chunk_offsets)]).get(999999999)
+            pool.map_async(preprocessing, [(cls, data_path_list, div, self.tmp_chunk_tpl % cidx, begin, end) for cidx, (begin, end) in enumerate(chunk_offsets)]).get(9999999)
             pool.close()
             pool.join()
         except KeyboardInterrupt:
@@ -207,8 +207,8 @@ class Data:
         x = [hash_func(elem_word) % opt.unigram_hash_size + 1 for elem_word in words]
         return x
 
-    def get_price(self, price):
-        return np.mean(price) / 10000.0
+    def get_price(self, price, ind):
+        return price[ind] / 10000.0
 
     def parse_data(self, label, h, i):
         # h: ['bcateid', 'brand', 'dcateid', 'img_feat', 'maker', 'mcateid', 'model', 'pid', 'price', 'product', 'scateid', 'updttm']
@@ -220,7 +220,7 @@ class Data:
         Y = to_categorical(Y, len(self.y_vocab))
 
         x = []
-        list_texts = [h['product'], h['maker'], h['model']]
+        list_texts = [h['product'], h['maker'], h['brand'], h['model']]
         for elem in list_texts:
             x += self.get_words(elem, i)
         xv = Counter(x).most_common(opt.max_len)
@@ -231,7 +231,8 @@ class Data:
             x[i] = xv[i][0]
             v[i] = xv[i][1]
 
-        price = self.get_price(h['price'])
+        price = self.get_price(h['price'], i)
+        print(price)
         img_feat = np.zeros(opt.len_img_feat)
 #        img_feat = np.array(h['img_feat'][:opt.len_img_feat])
         return Y, (x, v, price, img_feat)
@@ -383,8 +384,7 @@ class Data:
             sample_idx += len(data)
         for t in ['train', 'dev']:
             if chunk[t]['num'] > 0:
-                self.copy_chunk(dataset[t], chunk[t], num_samples[t],
-                                with_pid_field=t == 'dev')
+                self.copy_chunk(dataset[t], chunk[t], num_samples[t], with_pid_field=(t == 'dev'))
                 num_samples[t] += chunk[t]['num']
 
         for cur_div in ['train', 'dev']:
