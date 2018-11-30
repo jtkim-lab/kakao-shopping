@@ -208,6 +208,7 @@ class Data:
         return x
 
     def get_price(self, price, ind):
+        # TODO (Jungtaek): If we would like to use price feature, we need to find smarter way to normalize it.
         return price[ind] / 10000.0
 
     def parse_data(self, label, h, i):
@@ -220,6 +221,7 @@ class Data:
         Y = to_categorical(Y, len(self.y_vocab))
 
         x = []
+        # TODO (Jungtaek): make sure whether or not they are appropriate features
         list_texts = [h['product'], h['maker'], h['brand'], h['model']]
         for elem in list_texts:
             x += self.get_words(elem, i)
@@ -375,6 +377,7 @@ class Data:
                 c['cate'][idx] = y
                 c['num'] += 1
                 if not is_train:
+                    # TODO (Jungtaek): why it needs to convert to bytes object. I am not sure, but it is meaningless.
                     c['pid'].append(np.string_(pid))
                 for t in ['train', 'dev']:
                     if chunk[t]['num'] >= chunk_size:
