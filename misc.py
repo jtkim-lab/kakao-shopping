@@ -24,7 +24,8 @@ def get_logger(name=__file__):
 
     sh = logging.StreamHandler()
     sh.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('[%(levelname)-s] %(asctime)s [%(filename)s:%(funcName)s:%(lineno)d] %(message)s', '%Y-%m-%d %H:%M:%S')
+    formatter = logging.Formatter('[%(levelname)-s] %(asctime)s [%(filename)s] %(message)s', '%Y-%m-%d %H:%M:%S')
+#    formatter = logging.Formatter('[%(levelname)-s] %(asctime)s [%(filename)s:%(funcName)s:%(lineno)d] %(message)s', '%Y-%m-%d %H:%M:%S')
     sh.setFormatter(formatter)
 
     logger.addHandler(sh)

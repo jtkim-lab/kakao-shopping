@@ -208,7 +208,7 @@ class Data:
         return x
 
     def get_price(self, price, ind):
-        # TODO (Jungtaek): If we would like to use price feature, we need to find smarter way to normalize it.
+        # TODO (Jungtaek): if we would like to use price feature, we need to find smarter way to normalize it.
         return price[ind] / 10000.0
 
     def parse_data(self, label, h, i):
