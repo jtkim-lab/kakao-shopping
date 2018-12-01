@@ -209,7 +209,7 @@ class Data:
 
     def get_price(self, price, ind):
         # TODO (Jungtaek): if we would like to use price feature, we need to find smarter way to normalize it.
-        return price[ind] / 10000.0
+        return price[ind] / 1000.0
 
     def parse_data(self, label, h, i):
         # h: ['bcateid', 'brand', 'dcateid', 'img_feat', 'maker', 'mcateid', 'model', 'pid', 'price', 'product', 'scateid', 'updttm']
@@ -234,7 +234,6 @@ class Data:
             v[i] = xv[i][1]
 
         price = self.get_price(h['price'], i)
-        print(price)
         img_feat = np.zeros(opt.len_img_feat)
 #        img_feat = np.array(h['img_feat'][:opt.len_img_feat])
         return Y, (x, v, price, img_feat)

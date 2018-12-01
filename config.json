@@ -1,5 +1,5 @@
 {
-    "gpu": "0",
+    "gpu": "1",
     "path_data": "./data",
     "path_model": "./model",
     "path_tmp": "./tmp",
@@ -23,9 +23,9 @@
         "../datasets/test.chunk.02"
     ],
     "cate1": "../datasets/cate1.json",
-    "unigram_hash_size": 100000,
+    "unigram_hash_size": 200000,
     "min_word_length": 2,
-    "max_word_length": 31,
+    "max_word_length": 63,
     "max_len": 32,
     "len_img_feat": 2048,
     "chunk_size": 10000,
@@ -33,11 +33,11 @@
     "num_workers": 12,
     "num_predict_workers": 1,
     "size_embedding": 128,
-    "lr": 1e-4,
-    "rate_decay": 1.0,
+    "lr": 1e-3,
+    "rate_decay": 0.995,
     "num_epochs": 200,
     "batch_size": 1024,
-    "step_decay": 100,
+    "step_decay": 200,
     "step_display": 500,
     "step_save": 5
 }
