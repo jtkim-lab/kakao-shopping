@@ -37,7 +37,7 @@
     "rate_decay": 0.995,
     "num_epochs": 200,
     "batch_size": 1024,
-    "step_decay": 200,
+    "step_decay": 400,
     "step_display": 500,
     "step_save": 5
 }
