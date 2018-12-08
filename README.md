@@ -5,10 +5,10 @@
 
 ## Database Creation
 - All datasets should be converted to the database based on `h5py`, in order to run this project.
-- `y_vocab` file: Run `python data.py build_y_vocab`.
-- `train` dataset: Run `python data.py make_db train`.
-- `dev` dataset: Run `python data.py make_db dev ./data/dev --train_ratio=0.0`.
-- `test` dataset: Run `python data.py make_db test ./data/test --train_ratio=0.0`.
+- `y_vocab` file: Run `create_y_vocab.sh`.
+- `train` dataset: Run `create_db_train.sh`.
+- `dev` dataset: Run `create_db_dev.sh`.
+- `test` dataset: Run `create_db_test.sh`.
 
 ## Classifier Training
 - To train a classifier using `train` dataset, run `train_classifier.sh`.
@@ -16,6 +16,17 @@
 ## Submission
 - `dev` dataset: After executing `predict_dev.sh` and `compress_dev.sh`, you can submit the corresponding `zip` file, `kimandkaing_predict_dev.zip`.
 - `test` dataset: After executing `predict_test.sh` and `compress_test.sh`, you can submit the corresponding `zip` file, `kimandkaing_predict_test.zip`.
+
+## Detailed Execution Commands
+- `python data.py build_y_vocab`
+- `python data.py make_db train`
+- `python data.py make_db dev ./data/dev --train_ratio=0.0`
+- `python data.py make_db test ./data/test --train_ratio=0.0`
+- `python classifier.py train ./data/train`
+- `python classifier.py predict ./data/train ./model/train ./data/train/ dev kimandkang.predict.train.tsv`
+- `python evaluate.py evaluate kimandkang.predict.train.tsv ./data/train/data.h5py dev ./data/y_vocab.pkl`
+- `python classifier.py predict ./data/train ./model/train ./data/dev/ dev kimandkang.predict.dev.tsv`
+- `python classifier.py predict ./data/train ./model/train ./data/test/ dev kimandkang.predict.test.tsv`
 
 ## Authors
 - [Jungtaek Kim](https://github.com/jungtaekkim)
@@ -33,7 +44,7 @@
     - 위 명령어를 수행하면 `train` 데이터의 80%는 학습, 20%는 평가로 사용되도록 데이터가 나뉩니다.
     - 이 명령어를 실행하기 전에 `python data.py build_y_vocab`으로 데이터 생성이 필요한데, 코드 레파지토리에 생성한 파일이 포함되어 다시 만들지 않아도 됩니다.
     - `config.json` 파일에 동시에 처리할 프로세스 수를 `num_workers`로 조절할 수 있습니다.
-2. `python classifier.py train ./data/train ./model/train`
+2. `python classifier.py train ./data/train`
     - `./data/train`에 생성한 데이터셋으로 학습을 진행합니다.
     - 완성된 모델은 `./model/train`에 위치합니다.
 3. `python classifier.py predict ./data/train ./model/train ./data/train/ dev predict.tsv`

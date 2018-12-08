@@ -1,7 +1,9 @@
 {
-    "gpu": "0",
+    "gpu": "1",
     "path_data": "./data",
+    "path_model": "./model",
     "path_tmp": "./tmp",
+    "str_model": "our-model",
     "train_data_list": [
         "../datasets/train.chunk.01",
         "../datasets/train.chunk.02",
@@ -21,16 +23,21 @@
         "../datasets/test.chunk.02"
     ],
     "cate1": "../datasets/cate1.json",
-    "unigram_hash_size": 100000,
+    "unigram_hash_size": 200000,
     "min_word_length": 2,
-    "max_word_length": 31,
+    "max_word_length": 63,
     "max_len": 32,
-    "chunk_size": 20000,
-    "db_chunk_size": 100000,
+    "len_img_feat": 2048,
+    "chunk_size": 10000,
+    "db_chunk_size": 10000,
     "num_workers": 12,
     "num_predict_workers": 1,
-    "embd_size": 128,
-    "lr": 1e-4,
-    "num_epochs": 20,
-    "batch_size": 1024
+    "size_embedding": 512,
+    "lr": 1e-3,
+    "rate_decay": 0.998,
+    "num_epochs": 200,
+    "batch_size": 128,
+    "step_decay": 1000,
+    "step_display": 500,
+    "step_save": 1
 }
