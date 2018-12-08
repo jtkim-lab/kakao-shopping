@@ -1,7 +1,6 @@
 # challenge
 predict.tsv
 baseline.predict.tsv
-kimandkang.predict.train.tsv
 kimandkang.predict.dev.tsv
 kimandkang.predict.test.tsv
 
@@ -10,14 +9,13 @@ kimandkang.predict.test.tsv
 *.swp
 
 # directories
-.vscode
 tmp/
 data/
 model/
 
-# etc
-.vscode/
-
 # mac
 .DS_Store
 __MACOSX/
+
+# virtualenv
+.virtualenv
