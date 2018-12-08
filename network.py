@@ -14,13 +14,14 @@ dropout = tf.layers.dropout
 bn = tf.layers.batch_normalization
 relu = tf.nn.relu
 tanh = tf.nn.tanh
+lrelu = tf.nn.leaky_relu
 
 
 class Model(object):
     def __init__(self):
         self.logger = get_logger('Model')
 
-    def get_model(self, num_classes, activation=tanh):
+    def get_model(self, num_classes, activation=relu):
         len_max = opt.max_len
         size_voca = opt.unigram_hash_size + 1
 
@@ -34,10 +35,12 @@ class Model(object):
         outs = tf.nn.embedding_lookup(embedding, uni)
         outs_w = tf.expand_dims(w_uni, axis=1)
         
-        rate_dropout = 0.4
+        rate_dropout = 0.5
         bias_1 = tf.get_variable('bias_1', shape=(1, opt.size_embedding), dtype=tf.float32)
         outs = tf.matmul(outs_w, outs) + bias_1
         outs = tf.squeeze(outs, axis=1)
+        
+        outs = dropout(outs, rate=rate_dropout, training=is_training)
 
 #        outs = tf.expand_dims(outs, axis=2)
 
@@ -53,18 +56,16 @@ class Model(object):
 
         outs = dense(outs, 256)
 #        outs = dropout(outs, rate=rate_dropout, training=is_training)
-        outs = activation(outs)
         outs = bn(outs, training=is_training)
+        outs = activation(outs)
 
         outs = dense(outs, 512)
-#        outs = dropout(outs, rate=rate_dropout, training=is_training)
-        outs = activation(outs)
         outs = bn(outs, training=is_training)
+        outs = activation(outs)
 
         outs = dense(outs, 1024)
-#        outs = dropout(outs, rate=rate_dropout, training=is_training)
-        outs = activation(outs)
         outs = bn(outs, training=is_training)
+        outs = activation(outs)
 
         outs = dense(outs, num_classes)
 
