@@ -54,8 +54,11 @@ class Model(object):
 
 #        outs = flatten(outs)
 
-        outs = dense(outs, 256)
-#        outs = dropout(outs, rate=rate_dropout, training=is_training)
+        outs = dense(outs, 512)
+        outs = bn(outs, training=is_training)
+        outs = activation(outs)
+
+        outs = dense(outs, 1024)
         outs = bn(outs, training=is_training)
         outs = activation(outs)
 
