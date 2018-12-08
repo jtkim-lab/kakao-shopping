@@ -3,6 +3,7 @@
     "path_data": "./data",
     "path_model": "./model",
     "path_tmp": "./tmp",
+    "path_tensorboard": "./tensorboard",
     "str_model": "our-model",
     "train_data_list": [
         "../datasets/train.chunk.01",

@@ -202,20 +202,26 @@ class Classifier():
         uni_dev, w_uni_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, int(num_samples_dev / 100))
 
         SAVE_STEP=1
-        OUTPUT_DIR='./train/tensorflow'
 
+        # tensorboard 
         tf.summary.scalar('loss', model['loss'])
+        merged = tf.summary.merge_all()
+        # gs = tf.train.get_global_step(graph=None)
 
         summary_hook = tf.train.SummarySaverHook(
             save_steps=SAVE_STEP,
-            output_dir=OUTPUT_DIR
+            output_dir=opt.path_tensorboard,
+            summary_op=merged,
         )
 
         saver = tf.train.Saver()
         with tf.train.MonitoredSession(
             hooks=[summary_hook]
         ) as sess:
+
+            # init
             sess.run(tf.global_variables_initializer())
+
             for ind_epoch in range(0, opt.num_epochs):
                 self.logger.info('current epoch {}'.format(ind_epoch + 1))
                 for ind_iter in range(0, int(num_samples_train / batch_size)):
