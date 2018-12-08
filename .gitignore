@@ -17,5 +17,5 @@ model/
 .DS_Store
 __MACOSX/
 
-# virtualenv
 .virtualenv
+.vscode
