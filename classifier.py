@@ -206,18 +206,11 @@ class Classifier():
         # tensorboard 
         tf.summary.scalar('loss', model['loss'])
         merged = tf.summary.merge_all()
-        # gs = tf.train.get_global_step(graph=None)
-
-        summary_hook = tf.train.SummarySaverHook(
-            save_steps=SAVE_STEP,
-            output_dir=opt.path_tensorboard,
-            summary_op=merged,
-        )
 
         saver = tf.train.Saver()
-        with tf.train.MonitoredSession(
-            hooks=[summary_hook]
-        ) as sess:
+        summary_writer = tf.summary.FileWriter(opt.path_tensorboard)
+        with tf.Session() as sess:
+
 
             # init
             sess.run(tf.global_variables_initializer())
@@ -246,7 +239,9 @@ class Classifier():
                         self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
 
                 if (ind_epoch + 1) % opt.step_save == 0:
-                    saver.save(sess, os.path.join(opt.path_model, opt.str_model), global_step=iter_total)
+                    saver.save(sess, os.path.join(opt.path_model, opt.str_model), global_step=cur_iter)
+                    summery_writer.add_summary(session.run(merged), global_step=cur_iter)
+
 
 
 if __name__ == '__main__':
