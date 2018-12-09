@@ -237,10 +237,11 @@ class Classifier():
                             model['is_training']: False,
                         })
                         self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
+                        
+                        summery_writer.add_summary(session.run(merged), global_step=cur_iter)
 
                 if (ind_epoch + 1) % opt.step_save == 0:
                     saver.save(sess, os.path.join(opt.path_model, opt.str_model), global_step=cur_iter)
-                    summery_writer.add_summary(session.run(merged), global_step=cur_iter)
 
 
 
