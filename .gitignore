@@ -3,6 +3,7 @@ predict.tsv
 baseline.predict.tsv
 kimandkang.predict.dev.tsv
 kimandkang.predict.test.tsv
+kimandkang.predict.train.tsv
 
 # python
 *.pyc
