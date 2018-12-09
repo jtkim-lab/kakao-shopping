@@ -201,19 +201,18 @@ class Classifier():
 
         uni_dev, w_uni_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, int(num_samples_dev / 100))
 
-        SAVE_STEP=1
-
         # tensorboard 
         tf.summary.scalar('loss', model['loss'])
         merged = tf.summary.merge_all()
 
         saver = tf.train.Saver()
-        summary_writer = tf.summary.FileWriter(opt.path_tensorboard)
         with tf.Session() as sess:
-
 
             # init
             sess.run(tf.global_variables_initializer())
+
+            # summary writer
+            summary_writer = tf.summary.FileWriter(opt.path_tensorboard)
 
             for ind_epoch in range(0, opt.num_epochs):
                 self.logger.info('current epoch {}'.format(ind_epoch + 1))
