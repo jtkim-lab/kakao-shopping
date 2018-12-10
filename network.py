@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 
+from attention import MAB, IMAB
 from misc import get_logger, Option
 opt = Option('./config.json')
 
@@ -24,6 +25,7 @@ class Model(object):
     def get_model(self, num_classes, activation=relu):
         len_max = opt.max_len
         size_voca = opt.unigram_hash_size + 1
+        rate_dropout = 0.5
 
         uni = tf.placeholder(tf.int32, shape=(None, len_max))
         w_uni = tf.placeholder(tf.float32, shape=(None, len_max))
@@ -32,41 +34,31 @@ class Model(object):
         learning_rate = tf.placeholder(tf.float32)
 
         embedding = tf.get_variable('embedding', shape=(size_voca, opt.size_embedding), dtype=tf.float32)
-        outs = tf.nn.embedding_lookup(embedding, uni)
-        outs_w = tf.expand_dims(w_uni, axis=1)
-        
-        rate_dropout = 0.5
-        bias_1 = tf.get_variable('bias_1', shape=(1, opt.size_embedding), dtype=tf.float32)
-        outs = tf.matmul(outs_w, outs) + bias_1
-        outs = tf.squeeze(outs, axis=1)
-        
+        outs = tf.nn.embedding_lookup(embedding, uni) # batch_size * len_max * size_embedding
+        outs_w = tf.expand_dims(w_uni, axis=2) # batch_size * len_max * 1
+        outs_w = tf.tile(outs_w, [1, 1, opt.size_embedding]) # batch_size * len_max * size_embedding
+        outs += outs_w
+        outs_raw = outs
         outs = dropout(outs, rate=rate_dropout, training=is_training)
 
-#        outs = tf.expand_dims(outs, axis=2)
+        # encoder
+#        outs = MAB(outs, outs, 128, 4)
+        outs_enc = MAB(outs, outs, 128, 4)
 
-#        outs = conv(outs, 32, 3, activation=activation, padding='same')
-#        outs = pool(outs, 2, 2)
-#        outs = bn(outs, training=is_training)
+        outs = dropout(outs_raw, rate=rate_dropout, training=is_training)
 
-#        outs = conv(outs, 64, 3, activation=activation, padding='same')
-#        outs = pool(outs, 2, 2)
-#        outs = bn(outs, training=is_training)
+        # decoder
+        for cur_ind in range(0, 1):
+            outs = IMAB(outs, 128, 128, 4, var_name='seed{}'.format(cur_ind))
+            outs = MAB(outs, outs_enc, 128, 4)
 
-#        outs = flatten(outs)
+        outs = dense(outs, 1)
+#        outs = dropout(outs, rate=rate_dropout, training=is_training)
+#        outs = activation(outs)
+        outs = tf.squeeze(outs, axis=2)
 
-        outs = dense(outs, 512)
-        outs = bn(outs, training=is_training)
-        outs = activation(outs)
-
-        outs = dense(outs, 1024)
-        outs = bn(outs, training=is_training)
-        outs = activation(outs)
-
-        outs = dense(outs, 512)
-        outs = bn(outs, training=is_training)
-        outs = activation(outs)
-
-        outs = dense(outs, 1024)
+        outs = dense(outs, 256)
+#        outs = dropout(outs, rate=rate_dropout, training=is_training)
         outs = bn(outs, training=is_training)
         outs = activation(outs)
 
