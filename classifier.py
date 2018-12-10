@@ -169,7 +169,7 @@ class Classifier():
             str_mode = None
         self.write_preds(data_test, preds_test, meta, path_out, readable, str_mode=str_mode)
 
-    def train(self, path_root):
+    def train(self, path_root, is_scratch=True):
         path_data = os.path.join(path_root, 'data.h5py')
         path_meta = os.path.join(path_root, 'meta')
         data = h5py.File(path_data, 'r')
@@ -204,9 +204,13 @@ class Classifier():
 
         saver = tf.train.Saver()
         with tf.Session() as sess:
-
             # init
-            sess.run(tf.global_variables_initializer())
+            if is_scratch:
+                sess.run(tf.global_variables_initializer())
+            else:
+                path_checkpoint = tf.train.latest_checkpoint(opt.path_model)
+                self.logger.info('load {}'.format(path_checkpoint))
+                saver.restore(sess, path_checkpoint)
 
             # summary writer
             summary_writer = tf.summary.FileWriter(opt.path_tensorboard)
@@ -242,7 +246,6 @@ class Classifier():
 
                 if (ind_epoch + 1) % opt.step_save == 0:
                     saver.save(sess, os.path.join(opt.path_model, opt.str_model), global_step=cur_iter)
-
 
 
 if __name__ == '__main__':
