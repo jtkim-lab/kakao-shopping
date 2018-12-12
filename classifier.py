@@ -133,7 +133,7 @@ class Classifier():
         self.logger.info('# of test samples {}'.format(num_samples_test))
 
         preds_test = None
-        obj_model = Model()
+        obj_model = ResidualModel()
         model = obj_model.get_model(self.num_classes)
 
         saver = tf.train.Saver()
@@ -194,7 +194,7 @@ class Classifier():
         self.logger.info('# of train samples %s' % data_train['cate'].shape[0])
         self.logger.info('# of dev samples %s' % data_dev['cate'].shape[0])
 
-        obj_model = Model()
+        obj_model = ResidualModel()
         model = obj_model.get_model(self.num_classes)
         iter_total = tf.Variable(0, tf.int32)
         add_iter = tf.assign_add(iter_total, 1)
