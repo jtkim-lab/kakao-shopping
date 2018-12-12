@@ -19,8 +19,12 @@ tensorboard/
 .DS_Store
 __MACOSX/
 
+# dev env
 .virtualenv
 .vscode
 
+# config
 /config.json
 
+# data (link)
+data
