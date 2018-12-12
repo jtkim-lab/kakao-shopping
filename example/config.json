@@ -1,5 +1,6 @@
 {
     "gpu": "0",
+    "network": "fc_v1",
     "path_data": "./data",
     "path_model": "./model",
     "path_tmp": "./tmp",
