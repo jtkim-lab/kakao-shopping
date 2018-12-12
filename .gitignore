@@ -11,7 +11,7 @@ kimandkang.predict.train.tsv
 
 # directories
 tmp/
-data/
+data/*
 model/
 tensorboard/
 
@@ -28,6 +28,3 @@ __MACOSX/
 
 # data (link)
 data
-
-# exception
-!data/y_vocab.pkl
