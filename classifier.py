@@ -25,6 +25,7 @@ import tensorflow as tf
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 
+from datetime import datetime
 from misc import get_logger, Option
 from network import Model
 
@@ -209,7 +210,10 @@ class Classifier():
             sess.run(tf.global_variables_initializer())
 
             # summary writer
-            summary_writer = tf.summary.FileWriter(opt.path_tensorboard)
+            event_dir = os.path.join(opt.path_tensorboard, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+            if not os.path.isdir(event_dir):
+                os.mkdir(event_dir)
+            summary_writer = tf.summary.FileWriter(event_dir)
 
             for ind_epoch in range(0, opt.num_epochs):
                 self.logger.info('current epoch {}'.format(ind_epoch + 1))
