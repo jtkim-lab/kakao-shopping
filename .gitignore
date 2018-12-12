@@ -28,3 +28,6 @@ __MACOSX/
 
 # data (link)
 data
+
+# exception
+!data/y_vocab.pkl
