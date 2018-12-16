@@ -29,7 +29,6 @@ def block_residual(inputs, is_training, activation=relu, num_nodes=256):
     outs = outs + resi
     return outs
 
-
 class Model(object):
     def __init__(self):
         self.logger = get_logger('Model')
@@ -45,7 +44,7 @@ class Model(object):
         learning_rate = tf.placeholder(tf.float32)
 
         embedding = tf.get_variable('embedding', shape=(size_voca, opt.size_embedding), dtype=tf.float32)
-        outs = tf.nn.embedding_lookup(embedding, uni)
+        outs = tf.nn.embedding_lookup(embedding, uni) # batch_size * len_max * size_embedding
         outs_w = tf.expand_dims(w_uni, axis=1)
         
         rate_dropout = 0.5
@@ -54,10 +53,6 @@ class Model(object):
         outs = tf.squeeze(outs, axis=1)
         
         outs = dropout(outs, rate=rate_dropout, training=is_training)
-
-        outs = dense(outs, 256)
-        outs = bn(outs, training=is_training)
-        outs = activation(outs)
 
         outs = block_residual(outs, is_training, activation=activation, num_nodes=256)
         outs = block_residual(outs, is_training, activation=activation, num_nodes=256)
