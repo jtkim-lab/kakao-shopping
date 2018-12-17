@@ -17,7 +17,7 @@ tanh = tf.nn.tanh
 lrelu = tf.nn.leaky_relu
 
 
-class ResidualModel(object):
+class Model(object):
     def __init__(self):
         self.logger = get_logger('Model')
 

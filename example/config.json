@@ -1,10 +1,10 @@
 {
-    "gpu": "0",
-    "network": "fc_v1",
+    "gpu": "1",
+    "network": "fc_res_v1",
     "path_data": "./data",
     "path_model": "./model",
     "path_tmp": "./tmp",
-    "path_tensorboard": "./tensorboard",
+    "path_tensorboard": "/home/eastsky/mlg-114-storage/kakao/tensorboard",
     "str_model": "our-model",
     "train_data_list": [
         "../datasets/train.chunk.01",
