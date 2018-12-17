@@ -68,7 +68,8 @@ class Classifier():
         cur_img_feat = target_data['img_feat'][cur_indices, :]
         cur_price = target_data['price'][list(cur_indices)]
         cur_cate = target_data['cate'][cur_indices, :]
-        return cur_uni, cur_w_uni, cur_cate
+
+        return cur_uni, cur_w_uni, cur_img_feat, cur_price, cur_cate
 
     def write_preds(self, data, pred_y, meta, out_path, readable, str_mode=None):
         pid_order = []
@@ -147,11 +148,13 @@ class Classifier():
             if num_samples_test % batch_size > 0:
                 iter_total += 1
             for ind_iter in range(0, iter_total):
-                uni_test, w_uni_test, targets_test = self.get_batch(data_test, num_samples_test, ind_iter * batch_size, batch_size)
+                uni_test, w_uni_test, img_feat_test, price_test, targets_test = self.get_batch(data_test, num_samples_test, ind_iter * batch_size, batch_size)
 
                 cur_preds = sess.run(model['preds'], {
                     model['uni']: uni_test,
                     model['w_uni']: w_uni_test,
+                    model['img_feat']: img_feat_test,
+                    model['price']: price_test,
                     model['is_training']: False,
                 })
                 if preds_test is None:
@@ -200,8 +203,7 @@ class Classifier():
         iter_total = tf.Variable(0, tf.int32)
         add_iter = tf.assign_add(iter_total, 1)
 
-        uni_dev, w_uni_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, int(num_samples_dev / 100))
-
+        uni_dev, w_uni_dev, img_feat_dev, price_dev, targets_dev = self.get_batch(data_train, num_samples_train, 0, int(num_samples_dev / 100))
 
         saver = tf.train.Saver()
         with tf.Session() as sess:
@@ -222,11 +224,13 @@ class Classifier():
             for ind_epoch in range(0, opt.num_epochs):
                 self.logger.info('current epoch {}'.format(ind_epoch + 1))
                 for ind_iter in range(0, int(num_samples_train / batch_size)):
-                    uni_train, w_uni_train, targets_train = self.get_batch(data_train, num_samples_train, ind_iter * batch_size, batch_size)
+                    uni_train, w_uni_train, img_feat_train, price_train, targets_train = self.get_batch(data_train, num_samples_train, ind_iter * batch_size, batch_size)
                     cur_lr = opt.lr * opt.rate_decay**int(sess.run(iter_total) / float(opt.step_decay))
                     _, cur_loss, _, cur_iter = sess.run([model['optimizer'], model['loss'], add_iter, iter_total], {
                         model['uni']: uni_train,
                         model['w_uni']: w_uni_train,
+                        model['img_feat']: img_feat_train,
+                        model['price']: price_train,
                         model['targets']: targets_train,
                         model['is_training']: True,
                         model['learning_rate']: cur_lr,
@@ -237,6 +241,8 @@ class Classifier():
                         cur_loss_dev = sess.run(model['loss'], {
                             model['uni']: uni_dev,
                             model['w_uni']: w_uni_dev,
+                            model['img_feat']: img_feat_dev,
+                            model['price']: price_dev,
                             model['targets']: targets_dev,
                             model['is_training']: False,
                         })

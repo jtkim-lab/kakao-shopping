@@ -39,24 +39,25 @@ class Model(object):
 
         uni = tf.placeholder(tf.int32, shape=(None, len_max))
         w_uni = tf.placeholder(tf.float32, shape=(None, len_max))
+        img_feat = tf.placeholder(tf.float32, shape=(None, opt.len_img_feat))
+        price = tf.placeholder(tf.float32, shape=(None, ))
         targets = tf.placeholder(tf.float32, shape=(None, num_classes))
         is_training = tf.placeholder(tf.bool)
         learning_rate = tf.placeholder(tf.float32)
 
         embedding = tf.get_variable('embedding', shape=(size_voca, opt.size_embedding), dtype=tf.float32)
         outs = tf.nn.embedding_lookup(embedding, uni) # batch_size * len_max * size_embedding
-
+        outs_w = tf.expand_dims(w_uni, axis=1)
+        outs_p = tf.expand_dims(price, axis=1)
+        
         rate_dropout = 0.5
+        bias_1 = tf.get_variable('bias_1', shape=(1, opt.size_embedding), dtype=tf.float32)
+        outs = tf.matmul(outs_w, outs) + bias_1
+        outs = tf.squeeze(outs, axis=1)
 
-        outs = tf.reshape(outs, [-1, len_max * opt.size_embedding])
-        outs = dense(outs, 256)
-        outs = activation(outs)
-
-        outs_w = w_uni
-        outs_w = dense(outs_w, 32)
-        outs_w = activation(outs_w)
-
-        outs = tf.concat([outs, outs_w], axis=1)
+        outs = tf.concat([outs, img_feat, outs_p], axis=1)
+        
+        outs = dropout(outs, rate=rate_dropout, training=is_training)
 
         outs = block_residual(outs, is_training, activation=activation, num_nodes=256)
         outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
@@ -78,6 +79,8 @@ class Model(object):
         model = {
             'uni': uni,
             'w_uni': w_uni,
+            'img_feat': img_feat,
+            'price': price,
             'targets': targets,
             'is_training': is_training,
             'learning_rate': learning_rate,

@@ -234,8 +234,8 @@ class Data:
             v[i] = xv[i][1]
 
         price = self.get_price(h['price'], i)
-        img_feat = np.zeros(opt.len_img_feat)
-#        img_feat = np.array(h['img_feat'][:opt.len_img_feat])
+#        img_feat = np.zeros(opt.len_img_feat)
+        img_feat = np.array(h['img_feat'][i][:opt.len_img_feat])
         return Y, (x, v, price, img_feat)
 
     def create_dataset(self, g, size, num_classes):
