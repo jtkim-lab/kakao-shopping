@@ -42,6 +42,7 @@ class Model(object):
         
         outs = dropout(outs, rate=rate_dropout, training=is_training)
 
+        ########################################
         outs = dense(outs, 512)
         outs = bn(outs, training=is_training)
         outs = activation(outs)
@@ -53,6 +54,7 @@ class Model(object):
 
         outs = outs + resi
 
+        ########################################
         outs = dense(outs, 1024)
         outs = bn(outs, training=is_training)
         outs = activation(outs)
@@ -64,6 +66,31 @@ class Model(object):
 
         outs = outs + resi
 
+        ########################################
+        outs = dense(outs, 2048)
+        outs = bn(outs, training=is_training)
+        outs = activation(outs)
+
+        # residual block
+        resi = dense(outs, 2048)
+        resi = bn(resi, training=is_training)
+        resi = activation(resi)
+
+        outs = outs + resi
+
+        ########################################
+        outs = dense(outs, 4096)
+        outs = bn(outs, training=is_training)
+        outs = activation(outs)
+
+        # residual block
+        resi = dense(outs, 4096)
+        resi = bn(resi, training=is_training)
+        resi = activation(resi)
+
+        outs = outs + resi
+
+        ########################################
         # output layer
         outs = dense(outs, num_classes)
 

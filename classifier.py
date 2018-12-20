@@ -216,7 +216,11 @@ class Classifier():
                 saver.restore(sess, path_checkpoint)
 
             # summary writer
-            event_dir = os.path.join(opt.path_tensorboard, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+            if not opt.name_tensorboard or opt.name_tensorboard.isspace():
+                event_dir = os.path.join(opt.path_tensorboard, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+            else:
+                event_dir = os.path.join(opt.path_tensorboard, datetime.now().strftime('%Y-%m-%d-%H-%M-%S-') + opt.name_tensorboard)
+            
             if not os.path.isdir(event_dir):
                 os.mkdir(event_dir)
             summary_writer = tf.summary.FileWriter(event_dir)
