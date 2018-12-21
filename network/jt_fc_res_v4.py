@@ -12,10 +12,12 @@ pool = tf.layers.max_pooling1d
 flatten = tf.layers.flatten
 dropout = tf.layers.dropout
 bn = tf.layers.batch_normalization
+ln = tf.contrib.layers.layer_norm
 relu = tf.nn.relu
 tanh = tf.nn.tanh
 lrelu = tf.nn.leaky_relu
-
+adam = tf.train.AdamOptimizer
+adamw = tf.contrib.opt.AdamWOptimizer
 
 def block_residual(inputs, is_training, activation=relu, num_nodes=256):
     outs = dense(inputs, num_nodes)
@@ -48,6 +50,8 @@ class Model(object):
         embedding = tf.get_variable('embedding', shape=(size_voca, opt.size_embedding), dtype=tf.float32)
         outs = tf.nn.embedding_lookup(embedding, uni) # batch_size * len_max * size_embedding
         outs_w = tf.expand_dims(w_uni, axis=1)
+#        outs_i = dense(img_feat, 256)
+        outs_i = img_feat
         outs_p = tf.expand_dims(price, axis=1)
         
         rate_dropout = 0.5
@@ -55,13 +59,31 @@ class Model(object):
         outs = tf.matmul(outs_w, outs) + bias_1
         outs = tf.squeeze(outs, axis=1)
 
-        outs = tf.concat([outs, img_feat, outs_p], axis=1)
-        
-        outs = dropout(outs, rate=rate_dropout, training=is_training)
+        outs = ln(outs)
+        outs_i = ln(outs_i)
 
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=256)
+        outs = tf.concat([outs, outs_i], axis=1)
+        outs = dropout(outs, rate=rate_dropout, training=is_training)
+        
         outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=1024)
+        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
 
         # output layer
         outs = dense(outs, num_classes)
@@ -70,7 +92,7 @@ class Model(object):
         preds = tf.argmax(probs, axis=1)
         loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=targets, logits=outs)
         loss = tf.reduce_mean(loss)
-        opt_adam = tf.train.AdamOptimizer(learning_rate)
+        opt_adam = adamw(1e-5, learning_rate=learning_rate)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
