@@ -22,6 +22,7 @@ import fire
 import h5py
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib.tensorboard.plugins import projector
 
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
@@ -224,6 +225,17 @@ class Classifier():
             if not os.path.isdir(event_dir):
                 os.mkdir(event_dir)
             summary_writer = tf.summary.FileWriter(event_dir)
+
+            # code is from https://stackoverflow.com/questions/40849116/how-to-use-tensorboard-embedding-projector
+            config = projector.ProjectorConfig()
+            embedding = config.embeddings.add()
+            embedding.tensor_name = img_feat_dev.name
+
+            # Specify where you find the metadata
+            # embedding.metadata_path = meta_data
+
+            # Say that you want to visualise the embeddings
+            projector.visualize_embeddings(summary_writer, config)
 
             for ind_epoch in range(0, opt.num_epochs):
                 self.logger.info('current epoch {}'.format(ind_epoch + 1))
