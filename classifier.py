@@ -216,6 +216,8 @@ class Classifier():
                 self.logger.info('load {}'.format(path_checkpoint))
                 saver.restore(sess, path_checkpoint)
 
+            #######################
+            
             # summary writer
             if not opt.name_tensorboard or opt.name_tensorboard.isspace():
                 event_dir = os.path.join(opt.path_tensorboard, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
@@ -227,10 +229,20 @@ class Classifier():
 
             summary_writer = tf.summary.FileWriter(event_dir)
 
+            #######################
+
+            # projector
             # code is from https://stackoverflow.com/questions/40849116/how-to-use-tensorboard-embedding-projector
+
+            # label
+            metadata = os.path.join(event_dir, 'metadata.tsv')
+
+            with open(metadata, 'w') as metadata_file:
+                for row in targets_dev:
+                    metadata_file.write('%d\n' % row)
+
             emb_var = tf.Variable(img_feat_dev, name='embeddings')
 
-	    # projector saver
             projector_saver = tf.train.Saver([emb_var])
 
             sess.run(emb_var.initializer)
@@ -239,11 +251,12 @@ class Classifier():
             config = projector.ProjectorConfig()
             embedding = config.embeddings.add()
             embedding.tensor_name = emb_var.name
+            embedding.metadata_path = metadata
 
-            # Specify where you find the metadata
-            # embedding.metadata_path = meta_data
             # visualise the embeddings
             projector.visualize_embeddings(summary_writer, config)
+
+            #######################
 
             for ind_epoch in range(0, opt.num_epochs):
                 self.logger.info('current epoch {}'.format(ind_epoch + 1))
