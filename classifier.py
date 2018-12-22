@@ -224,17 +224,25 @@ class Classifier():
             
             if not os.path.isdir(event_dir):
                 os.mkdir(event_dir)
+
             summary_writer = tf.summary.FileWriter(event_dir)
 
             # code is from https://stackoverflow.com/questions/40849116/how-to-use-tensorboard-embedding-projector
+            emb_var = tf.Variable(img_feat_dev, name='embeddings')
+
+	    # projector saver
+            projector_saver = tf.train.Saver([emb_var])
+
+            sess.run(emb_var.initializer)
+            projector_saver.save(sess, os.path.join(event_dir, 'img_feat.ckpt'))
+
             config = projector.ProjectorConfig()
             embedding = config.embeddings.add()
-            embedding.tensor_name = img_feat_dev.name
+            embedding.tensor_name = emb_var.name
 
             # Specify where you find the metadata
             # embedding.metadata_path = meta_data
-
-            # Say that you want to visualise the embeddings
+            # visualise the embeddings
             projector.visualize_embeddings(summary_writer, config)
 
             for ind_epoch in range(0, opt.num_epochs):
@@ -271,6 +279,7 @@ class Classifier():
                         summary_writer.add_summary(train_loss_summary, global_step=cur_iter)
                         summary_writer.add_summary(eval_loss_summary, global_step=cur_iter)
                         summary_writer.add_summary(lr_summary, global_step=cur_iter)
+	    
 
                 if (ind_epoch + 1) % opt.step_save == 0:
                     saver.save(sess, os.path.join(opt.path_model, opt.str_model), global_step=cur_iter)
