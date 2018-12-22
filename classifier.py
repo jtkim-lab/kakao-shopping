@@ -239,7 +239,7 @@ class Classifier():
 
             with open(metadata, 'w') as metadata_file:
                 for row in targets_dev:
-                    metadata_file.write('%d\n' % row)
+                    metadata_file.write('%d\n' % np.argmax(row))
 
             emb_var = tf.Variable(img_feat_dev, name='embeddings')
 
@@ -251,7 +251,7 @@ class Classifier():
             config = projector.ProjectorConfig()
             embedding = config.embeddings.add()
             embedding.tensor_name = emb_var.name
-            embedding.metadata_path = metadata
+            embedding.metadata_path = 'metadata.tsv'
 
             # visualise the embeddings
             projector.visualize_embeddings(summary_writer, config)
