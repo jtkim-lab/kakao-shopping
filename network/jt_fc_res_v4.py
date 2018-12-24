@@ -35,7 +35,7 @@ class Model(object):
     def __init__(self):
         self.logger = get_logger('Model')
 
-    def get_model(self, num_classes, activation=relu):
+    def get_model(self, num_classes, activation=lrelu):
         len_max = opt.max_len
         size_voca = opt.unigram_hash_size + 1
 
@@ -72,18 +72,6 @@ class Model(object):
         outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
         outs = bn(outs, training=is_training)
         outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
 
         # output layer
         outs = dense(outs, num_classes)
@@ -92,7 +80,7 @@ class Model(object):
         preds = tf.argmax(probs, axis=1)
         loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=targets, logits=outs)
         loss = tf.reduce_mean(loss)
-        opt_adam = adamw(1e-5, learning_rate=learning_rate)
+        opt_adam = adamw(1e-6, learning_rate=learning_rate)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
