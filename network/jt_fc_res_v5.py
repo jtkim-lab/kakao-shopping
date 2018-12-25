@@ -54,7 +54,7 @@ class Model(object):
         outs_i = img_feat
         outs_p = tf.expand_dims(price, axis=1)
         
-        rate_dropout = 0.8
+        rate_dropout = 0.3
         bias_1 = tf.get_variable('bias_1', shape=(1, opt.size_embedding), dtype=tf.float32)
         outs = tf.matmul(outs_w, outs) + bias_1
         outs = tf.squeeze(outs, axis=1)
