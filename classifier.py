@@ -29,8 +29,12 @@ from keras.callbacks import ModelCheckpoint
 
 from datetime import datetime
 from misc import get_logger, Option
+from shutil import copyfile
 
-opt = Option('./config.json')
+config_file_path = './config.json'
+copyfile(config_file_path, 'model/config.json')     # backup config file (overwrite)
+
+opt = Option(config_file_path)
 cate1 = json.loads(open(opt.cate1, 'r').read())
 os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
 

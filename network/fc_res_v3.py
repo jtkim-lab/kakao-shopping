@@ -20,11 +20,13 @@ adam = tf.train.AdamOptimizer
 adamw = tf.contrib.opt.AdamWOptimizer
 
 def block_residual(inputs, is_training, activation=relu, num_nodes=256):
-    outs = dense(inputs, num_nodes)
-    outs = bn(outs, training=is_training)
-    outs = activation(outs)
+    outs = inputs
 
     resi = dense(outs, num_nodes)
+    resi = bn(resi, training=is_training)
+    resi = activation(resi)
+
+    resi = dense(resi, num_nodes)
     resi = bn(resi, training=is_training)
     resi = activation(resi)
 
@@ -64,13 +66,20 @@ class Model(object):
 
         outs = tf.concat([outs, outs_i], axis=1)
         outs = dropout(outs, rate=rate_dropout, training=is_training)
-        
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+
+        outs = dense(outs, 512)
         outs = bn(outs, training=is_training)
+        outs = activation(outs)
+       
         outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
         outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
         outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
 
         # output layer

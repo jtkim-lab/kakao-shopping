@@ -20,9 +20,10 @@ adam = tf.train.AdamOptimizer
 adamw = tf.contrib.opt.AdamWOptimizer
 
 def block_residual(inputs, is_training, activation=relu, num_nodes=256):
-    outs = dense(inputs, num_nodes)
-    outs = bn(outs, training=is_training)
-    outs = activation(outs)
+#    outs = dense(inputs, num_nodes)
+#    outs = bn(outs, training=is_training)
+#    outs = activation(outs)
+    outs = inputs
 
     resi = dense(outs, num_nodes)
     resi = bn(resi, training=is_training)
@@ -50,28 +51,27 @@ class Model(object):
         embedding = tf.get_variable('embedding', shape=(size_voca, opt.size_embedding), dtype=tf.float32)
         outs = tf.nn.embedding_lookup(embedding, uni) # batch_size * len_max * size_embedding
         outs_w = tf.expand_dims(w_uni, axis=1)
-#        outs_i = dense(img_feat, 256)
         outs_i = img_feat
         outs_p = tf.expand_dims(price, axis=1)
         
-        rate_dropout = 0.5
+        rate_dropout = 0.8
         bias_1 = tf.get_variable('bias_1', shape=(1, opt.size_embedding), dtype=tf.float32)
         outs = tf.matmul(outs_w, outs) + bias_1
         outs = tf.squeeze(outs, axis=1)
 
         outs = ln(outs)
         outs_i = ln(outs_i)
+        outs_p = ln(outs_p)
 
-        outs = tf.concat([outs, outs_i], axis=1)
+        outs = tf.concat([outs, outs_i, outs_p], axis=1)
         outs = dropout(outs, rate=rate_dropout, training=is_training)
-        
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+
+        outs = dense(outs, 512)
         outs = bn(outs, training=is_training)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
-        outs = bn(outs, training=is_training)
-        outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
+        outs = activation(outs)
+
+        for _ in range(0, 5):
+            outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
 
         # output layer
         outs = dense(outs, num_classes)
