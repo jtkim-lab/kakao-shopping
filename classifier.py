@@ -30,7 +30,7 @@ from keras.callbacks import ModelCheckpoint
 from datetime import datetime
 from misc import get_logger, Option
 from shutil import copyfile
-from sklearn.metrics import accuracy_score
+import sklearn.metrics as sklm
 
 config_file_path = './config.json'
 copyfile(config_file_path, 'model/config.json')     # backup config file (overwrite)
@@ -288,10 +288,10 @@ class Classifier():
                             model['targets']: targets_dev,
                             model['is_training']: False,
                         })
-                        cur_accuracy_dev = accuracy_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
-                        cur_precision_dev = metrics.precision_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
-                        cur_recall_dev = metrics.recall_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
-                        cur_f1_dev = metrics.f1_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
+                        cur_accuracy_dev = sklm.accuracy_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
+                        cur_precision_dev = sklm.precision_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
+                        cur_recall_dev = sklm.recall_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
+                        cur_f1_dev = sklm.f1_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
 
                         self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
                         self.logger.info('cur_accuracy_dev {:.4f}'.format(cur_accuracy_dev))
