@@ -280,7 +280,7 @@ class Classifier():
 
                     if cur_iter % opt.step_display == 0:
                         self.logger.info('cur_iter {} cur_loss {:.4f} cur_lr {:.2E}'.format(cur_iter, cur_loss, cur_lr))
-                        cur_loss_dev, cur_pred_dev, cur_target_dev = sess.run(model['loss'], model['preds'], model['targets'], {
+                        cur_loss_dev, cur_pred_dev, cur_target_dev = sess.run([model['loss'], model['preds'], model['targets']], {
                             model['uni']: uni_dev,
                             model['w_uni']: w_uni_dev,
                             model['img_feat']: img_feat_dev,
