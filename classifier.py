@@ -289,9 +289,9 @@ class Classifier():
                             model['is_training']: False,
                         })
                         cur_accuracy_dev = sklm.accuracy_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
-                        cur_precision_dev = sklm.precision_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
-                        cur_recall_dev = sklm.recall_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
-                        cur_f1_dev = sklm.f1_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
+                        cur_precision_dev = sklm.precision_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev, average='micro')
+                        cur_recall_dev = sklm.recall_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev, average='micro')
+                        cur_f1_dev = sklm.f1_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev, average='micro')
 
                         self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
                         self.logger.info('cur_accuracy_dev {:.4f}'.format(cur_accuracy_dev))
