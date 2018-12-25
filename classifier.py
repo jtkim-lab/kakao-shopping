@@ -297,11 +297,17 @@ class Classifier():
                         eval_loss_summary = tf.Summary(value=[tf.Summary.Value(tag='loss/eval', simple_value=cur_loss_dev)])
                         eval_accuracy_summary = tf.Summary(value=[tf.Summary.Value(tag='metric/accuracy', simple_value=cur_accuracy_dev)])
                         lr_summary = tf.Summary(value=[tf.Summary.Value(tag='hyp/lr', simple_value=cur_lr)])
+                        batch_size_summary = tf.Summary(value=[tf.Summary.Value(tag='hyp/batch_size', simple_value=batch_size)])
+                        rate_dropout_summary = tf.Summary(value=[tf.Summary.Value(tag='hyp/rate_dropout', simple_value=opt.rate_dropout)])
+                        rate_weight_decay_summary = tf.Summary(value=[tf.Summary.Value(tag='hyp/rate_weight_decay', simple_value=opt.rate_weight_decay)])
                         
                         summary_writer.add_summary(train_loss_summary, global_step=cur_iter)
                         summary_writer.add_summary(eval_loss_summary, global_step=cur_iter)
                         summary_writer.add_summary(eval_accuracy_summary, global_step=cur_iter)
                         summary_writer.add_summary(lr_summary, global_step=cur_iter)
+                        summary_writer.add_summary(batch_size_summary, global_step=cur_iter)
+                        summary_writer.add_summary(rate_dropout_summary, global_step=cur_iter)
+                        summary_writer.add_summary(rate_weight_decay_summary, global_step=cur_iter)
 	    
 
                 if (ind_epoch + 1) % opt.step_save == 0:
