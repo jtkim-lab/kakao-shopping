@@ -289,6 +289,9 @@ class Classifier():
                             model['is_training']: False,
                         })
                         cur_accuracy_dev = accuracy_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
+                        cur_precision_dev = metrics.precision_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
+                        cur_recall_dev = metrics.recall_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
+                        cur_f1_dev = metrics.f1_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
 
                         self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
                         self.logger.info('cur_accuracy_dev {:.4f}'.format(cur_accuracy_dev))
@@ -296,11 +299,17 @@ class Classifier():
                         train_loss_summary = tf.Summary(value=[tf.Summary.Value(tag='loss/train', simple_value=cur_loss)])
                         eval_loss_summary = tf.Summary(value=[tf.Summary.Value(tag='loss/eval', simple_value=cur_loss_dev)])
                         eval_accuracy_summary = tf.Summary(value=[tf.Summary.Value(tag='metric/accuracy', simple_value=cur_accuracy_dev)])
+                        eval_precision_summary = tf.Summary(value=[tf.Summary.Value(tag='metric/precision', simple_value=cur_precision_dev)])
+                        eval_recall_summary = tf.Summary(value=[tf.Summary.Value(tag='metric/recall', simple_value=cur_recall_dev)])
+                        eval_f1_summary = tf.Summary(value=[tf.Summary.Value(tag='metric/f1', simple_value=cur_f1_dev)])
                         lr_summary = tf.Summary(value=[tf.Summary.Value(tag='lr', simple_value=cur_lr)])
                         
                         summary_writer.add_summary(train_loss_summary, global_step=cur_iter)
                         summary_writer.add_summary(eval_loss_summary, global_step=cur_iter)
                         summary_writer.add_summary(eval_accuracy_summary, global_step=cur_iter)
+                        summary_writer.add_summary(eval_precision_summary, global_step=cur_iter)
+                        summary_writer.add_summary(eval_recall_summary, global_step=cur_iter)
+                        summary_writer.add_summary(eval_f1_summary, global_step=cur_iter)
                         summary_writer.add_summary(lr_summary, global_step=cur_iter)
 	    
 
