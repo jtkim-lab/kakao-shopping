@@ -288,7 +288,7 @@ class Classifier():
                             model['targets']: targets_dev,
                             model['is_training']: False,
                         })
-                        cur_accuracy_dev = accuracy_score(np.argmax(cur_target_dev, axis=1), np.argmax(cur_pred_dev, axis=1))
+                        cur_accuracy_dev = accuracy_score(np.argmax(cur_target_dev, axis=1), cur_pred_dev)
 
                         self.logger.info('cur_loss_dev {:.4f}'.format(cur_loss_dev))
                         self.logger.info('cur_accuracy_dev {:.4f}'.format(cur_accuracy_dev))
