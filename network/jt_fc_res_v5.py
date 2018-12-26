@@ -39,6 +39,7 @@ class Model(object):
     def get_model(self, num_classes, activation=lrelu):
         len_max = opt.max_len
         size_voca = opt.unigram_hash_size + 1
+        rate_dropout = opt.rate_dropout
 
         uni = tf.placeholder(tf.int32, shape=(None, len_max))
         w_uni = tf.placeholder(tf.float32, shape=(None, len_max))
@@ -54,7 +55,6 @@ class Model(object):
         outs_i = img_feat
         outs_p = tf.expand_dims(price, axis=1)
         
-        rate_dropout = 0.8
         bias_1 = tf.get_variable('bias_1', shape=(1, opt.size_embedding), dtype=tf.float32)
         outs = tf.matmul(outs_w, outs) + bias_1
         outs = tf.squeeze(outs, axis=1)
@@ -80,7 +80,7 @@ class Model(object):
         preds = tf.argmax(probs, axis=1)
         loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=targets, logits=outs)
         loss = tf.reduce_mean(loss)
-        opt_adam = adamw(1e-6, learning_rate=learning_rate)
+        opt_adam = adamw(opt.rate_weight_decay, learning_rate=learning_rate)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):

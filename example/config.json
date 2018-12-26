@@ -38,6 +38,8 @@
     "size_embedding": 512,
     "lr": 1e-3,
     "rate_decay": 0.998,
+    "rate_dropout": 0.3,
+    "rate_weight_decay": 1e-6,
     "num_epochs": 200,
     "batch_size": 128,
     "step_decay": 1000,
