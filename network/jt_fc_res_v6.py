@@ -18,6 +18,7 @@ tanh = tf.nn.tanh
 lrelu = tf.nn.leaky_relu
 adam = tf.train.AdamOptimizer
 adamw = tf.contrib.opt.AdamWOptimizer
+lstm = tf.nn.rnn_cell.LSTMCell
 
 def block_residual(inputs, is_training, activation=relu, num_nodes=256):
 #    outs = inputs
@@ -37,7 +38,7 @@ class Model(object):
     def __init__(self):
         self.logger = get_logger('Model')
 
-    def get_model(self, num_classes, activation=lrelu):
+    def get_model(self, num_classes, activation=tanh):
         len_max = opt.max_len
         size_voca = opt.unigram_hash_size + 1
         rate_dropout = opt.rate_dropout
@@ -52,7 +53,7 @@ class Model(object):
 
         embedding = tf.get_variable('embedding', shape=(size_voca, opt.size_embedding), dtype=tf.float32)
 
-        len_max = 64
+        len_max = 16
         uni_ = tf.slice(uni, [0, 0], [-1, len_max])
         w_uni_ = tf.slice(w_uni, [0, 0], [-1, len_max])
 
@@ -63,14 +64,23 @@ class Model(object):
 
         clipped_outs_w = tf.clip_by_value(outs_w, 0.0, 1.0)
 
-        outs = tf.multiply(clipped_outs_w, outs)
-        outs = tf.reshape(outs, (-1, len_max * opt.size_embedding))
+        outs = tf.multiply(outs_w, outs) # batch_size * len_max * size_embedding
+#        outs = tf.concat([outs, outs_w], axis=2)
 
-        outs = tf.concat([outs, tf.squeeze(outs_w, axis=2)], axis=1)
+        outs = tf.reverse(outs, axis=[1])
+        outs = tf.unstack(outs, len_max, axis=1)
+
+        cell_lstm = lstm(128, name='basic_lstm_cell', forget_bias=1.0)
+        outs, states = tf.nn.static_rnn(cell_lstm, outs, dtype=tf.float32)
+        outs = outs[-1]
 
 #        outs = dropout(outs, rate=rate_dropout, training=is_training)
 
-        outs = dense(outs, 1024)
+        outs = dense(outs, 256)
+        outs = bn(outs, training=is_training)
+        outs = activation(outs)
+
+        outs = dense(outs, 512)
         outs = bn(outs, training=is_training)
         outs = activation(outs)
 
@@ -78,8 +88,8 @@ class Model(object):
 #        outs_i = ln(outs_i)
 #        outs_p = ln(outs_p)
 
-        for _ in range(0, 3):
-            outs = block_residual(outs, is_training, activation=activation, num_nodes=1024)
+#        for _ in range(0, 3):
+#            outs = block_residual(outs, is_training, activation=activation, num_nodes=512)
 
         # output layer
         outs = dense(outs, num_classes)
@@ -88,7 +98,8 @@ class Model(object):
         preds = tf.argmax(probs, axis=1)
         loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=targets, logits=outs)
         loss = tf.reduce_mean(loss)
-        opt_adam = adamw(opt.rate_weight_decay, learning_rate=learning_rate)
+        opt_adam = adam(learning_rate=learning_rate)
+#        opt_adam = adamw(opt.rate_weight_decay, learning_rate=learning_rate)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):

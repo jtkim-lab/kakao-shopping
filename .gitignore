@@ -12,6 +12,7 @@ kimandkang.predict.train.tsv
 # directories
 tmp/
 data/*
+data_8/*
 model/
 tensorboard/
 
